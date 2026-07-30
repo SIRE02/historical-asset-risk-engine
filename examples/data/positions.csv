@@ -1,0 +1,3 @@
+portfolio_snapshot_id,portfolio_id,as_of_date,instrument_id,quantity,valuation_price,valuation_price_timestamp,valuation_price_source,source_row_id
+snapshot-2024-01-02,portfolio-1,2024-01-02,US_SPY,10,100,2024-01-02T16:00:00-05:00,synthetic official close,row-1
+snapshot-2024-01-02,portfolio-1,2024-01-02,US_QQQ,-5,50,2024-01-02T16:00:00-05:00,synthetic official close,row-2

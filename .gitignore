@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.idea/
+
+# Generated files
+outputs/
+tmp/
+
+# Local input data is not published. Synthetic repository examples live elsewhere.
+/data/
+docs/
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+
+# Editors
+.vscode/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/

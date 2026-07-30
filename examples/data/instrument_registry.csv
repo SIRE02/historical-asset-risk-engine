@@ -1,0 +1,3 @@
+instrument_id,provider_ticker,listing_venue,instrument_type,price_currency,market_calendar_id,market_timezone,adjusted_return_series_id,return_adjustment_basis
+US_SPY,SPY,ARCX,standard_etf,USD,XNYS,America/New_York,fixture:SPY:adjusted-close,synthetic split and distribution adjusted
+US_QQQ,QQQ,XNAS,standard_etf,USD,XNYS,America/New_York,fixture:QQQ:adjusted-close,synthetic split and distribution adjusted

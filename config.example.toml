@@ -1,0 +1,17 @@
+[analysis]
+provider = "yahoo"
+tickers = ["SPY", "QQQ", "TLT", "GLD"]
+start_date = "2021-01-01"
+end_date = "2025-01-01"
+rolling_window = 21
+rolling_min_observations = 21
+observations_per_year = 252
+quantiles = [0.05, 0.25, 0.75, 0.95]
+quantile_method = "linear"
+downside_target = 0.0
+output_dir = "outputs/example"
+
+# Portfolio valuation is enabled because all three paths are supplied.
+instrument_registry_path = "examples/data/instrument_registry.csv"
+positions_path = "examples/data/positions.csv"
+cash_path = "examples/data/cash.csv"

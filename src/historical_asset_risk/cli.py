@@ -1,0 +1,311 @@
+"""Command-line entry point for the Historical Asset Risk Engine."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
+from historical_asset_risk.artifacts import (
+    portfolio_artifact_frames,
+    read_cash,
+    read_instrument_registry,
+    read_positions,
+)
+from historical_asset_risk.config import AnalysisConfig, load_configuration
+from historical_asset_risk.contracts import PortfolioValuation
+from historical_asset_risk.correlation import (
+    correlation_matrix,
+    covariance_matrix,
+    extreme_correlation_pairs,
+    rolling_correlation,
+    rolling_covariance,
+)
+from historical_asset_risk.data_loader import (
+    MarketDataError,
+    load_market_data,
+    persist_acquisition,
+    persist_quality_report,
+)
+from historical_asset_risk.portfolio import (
+    validate_portfolio_snapshot,
+    value_portfolio,
+)
+from historical_asset_risk.providers import MarketDataProvider, provider_for
+from historical_asset_risk.reporting import build_run_manifest, persist_run_manifest
+from historical_asset_risk.returns import (
+    calculate_log_returns,
+    calculate_simple_returns,
+    summarize_returns,
+)
+from historical_asset_risk.risk_metrics import rolling_volatility, volatility_summary
+from historical_asset_risk.visualizations import (
+    plot_correlation_heatmap,
+    plot_rolling_volatility,
+)
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="historical-asset-risk",
+        description=(
+            "Analyze validated adjusted daily prices from Yahoo or a local CSV."
+        ),
+    )
+    parser.add_argument("--config", type=Path, help="TOML or JSON configuration file")
+    parser.add_argument("--provider", choices=("yahoo", "csv"))
+    parser.add_argument(
+        "--tickers",
+        nargs="+",
+        help="Ticker symbols separated by spaces (commas are also accepted)",
+    )
+    parser.add_argument("--start-date")
+    parser.add_argument("--end-date")
+    parser.add_argument("--rolling-window", type=int)
+    parser.add_argument("--rolling-min-observations", type=int)
+    parser.add_argument("--observations-per-year", type=int)
+    parser.add_argument(
+        "--quantiles",
+        nargs="+",
+        help="Empirical probabilities separated by spaces (commas are also accepted)",
+    )
+    parser.add_argument(
+        "--quantile-method",
+        choices=("linear", "lower", "higher", "midpoint", "nearest"),
+    )
+    parser.add_argument(
+        "--downside-target",
+        type=float,
+        help="Daily log-return target used by downside deviation",
+    )
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--csv-path", type=Path)
+    parser.add_argument("--instrument-registry-path", type=Path)
+    parser.add_argument("--positions-path", type=Path)
+    parser.add_argument("--cash-path", type=Path)
+    return parser
+
+
+def _configuration_from_args(arguments: argparse.Namespace) -> AnalysisConfig:
+    tickers: list[str] | None = None
+    if arguments.tickers is not None:
+        tickers = [
+            ticker
+            for item in arguments.tickers
+            for ticker in item.split(",")
+            if ticker.strip()
+        ]
+    quantiles: list[str] | None = None
+    if arguments.quantiles is not None:
+        quantiles = [
+            probability
+            for item in arguments.quantiles
+            for probability in item.split(",")
+            if probability.strip()
+        ]
+    overrides: dict[str, Any] = {
+        "provider": arguments.provider,
+        "tickers": tickers,
+        "start_date": arguments.start_date,
+        "end_date": arguments.end_date,
+        "rolling_window": arguments.rolling_window,
+        "rolling_min_observations": arguments.rolling_min_observations,
+        "observations_per_year": arguments.observations_per_year,
+        "quantiles": quantiles,
+        "quantile_method": arguments.quantile_method,
+        "downside_target": arguments.downside_target,
+        "output_dir": arguments.output_dir,
+        "csv_path": arguments.csv_path,
+        "instrument_registry_path": arguments.instrument_registry_path,
+        "positions_path": arguments.positions_path,
+        "cash_path": arguments.cash_path,
+    }
+    return load_configuration(arguments.config, overrides)
+
+
+def _load_and_value_portfolio(config: AnalysisConfig) -> PortfolioValuation | None:
+    if not config.portfolio_enabled:
+        return None
+    assert config.instrument_registry_path is not None
+    assert config.positions_path is not None
+    assert config.cash_path is not None
+    instruments = read_instrument_registry(config.instrument_registry_path)
+    positions = read_positions(config.positions_path)
+    cash = read_cash(config.cash_path)
+    snapshot = validate_portfolio_snapshot(
+        instruments,
+        positions,
+        cash,
+        market_data_instruments=config.tickers,
+    )
+    return value_portfolio(snapshot)
+
+
+def _prevent_snapshot_overwrite(
+    output_dir: Path, portfolio: PortfolioValuation | None
+) -> None:
+    if portfolio is None:
+        return
+    manifest_path = output_dir / "run_manifest.json"
+    if not manifest_path.is_file():
+        return
+    try:
+        existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f"Cannot verify the existing portfolio run manifest {manifest_path}: {exc}"
+        ) from exc
+    existing_id = existing.get("portfolio", {}).get("exposure_snapshot_id")
+    if existing_id is not None and existing_id != portfolio.exposure_snapshot_id:
+        raise ValueError(
+            "Refusing to overwrite a materially different portfolio run in "
+            f"{output_dir}; choose a new OUTPUT_DIR."
+        )
+
+
+def run_analysis(
+    config: AnalysisConfig | None = None,
+    provider: MarketDataProvider | None = None,
+) -> None:
+    """Run the complete analysis from one validated configuration."""
+    config = config or load_configuration()
+    portfolio = _load_and_value_portfolio(config)
+    selected_provider = provider or provider_for(config)
+    print(
+        f"Loading adjusted prices from {config.provider} for "
+        f"{', '.join(config.tickers)}..."
+    )
+    market_data = load_market_data(config, selected_provider)
+    prices = market_data.prices
+    simple_returns = calculate_simple_returns(prices)
+    log_returns = calculate_log_returns(prices)
+    return_summary = summarize_returns(
+        log_returns,
+        config.quantiles,
+        config.quantile_method,
+        config.downside_target,
+    )
+    vol_summary = volatility_summary(log_returns, config.observations_per_year)
+    rolling = rolling_volatility(
+        log_returns,
+        config.rolling_window,
+        config.observations_per_year,
+        config.rolling_min_observations,
+    )
+    covariances = covariance_matrix(log_returns)
+    correlations = correlation_matrix(log_returns)
+    rolling_covariances = rolling_covariance(
+        log_returns, config.rolling_window, config.rolling_min_observations
+    )
+    rolling_correlations = rolling_correlation(
+        log_returns, config.rolling_window, config.rolling_min_observations
+    )
+    highest, lowest = extreme_correlation_pairs(correlations)
+
+    output_dir = config.output_dir
+    _prevent_snapshot_overwrite(output_dir, portfolio)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifacts = [
+        "adjusted_prices.csv",
+        "simple_returns.csv",
+        "log_returns.csv",
+        "return_summary.csv",
+        "volatility_summary.csv",
+        "rolling_volatility.csv",
+        "covariance_matrix.csv",
+        "correlation_matrix.csv",
+        "rolling_covariance.csv",
+        "rolling_correlation.csv",
+        "rolling_volatility.png",
+        "correlation_heatmap.png",
+        "data_quality_report.json",
+        "run_manifest.json",
+    ]
+    if portfolio is not None:
+        artifacts.extend(
+            [
+                "validated_instruments.csv",
+                "validated_positions.csv",
+                "portfolio_valuation.csv",
+                "portfolio_exposure_summary.csv",
+            ]
+        )
+    prices.to_csv(output_dir / "adjusted_prices.csv", index_label="date")
+    simple_returns.to_csv(output_dir / "simple_returns.csv", index_label="date")
+    log_returns.to_csv(output_dir / "log_returns.csv", index_label="date")
+    return_summary.to_csv(output_dir / "return_summary.csv")
+    vol_summary.to_csv(output_dir / "volatility_summary.csv")
+    rolling.to_csv(output_dir / "rolling_volatility.csv", index_label="date")
+    covariances.to_csv(output_dir / "covariance_matrix.csv")
+    correlations.to_csv(output_dir / "correlation_matrix.csv")
+    rolling_covariances.to_csv(
+        output_dir / "rolling_covariance.csv", index_label=["date", "ticker"]
+    )
+    rolling_correlations.to_csv(
+        output_dir / "rolling_correlation.csv", index_label=["date", "ticker"]
+    )
+    plot_rolling_volatility(
+        rolling, output_dir / "rolling_volatility.png", config.rolling_window
+    )
+    plot_correlation_heatmap(correlations, output_dir / "correlation_heatmap.png")
+    quality_report = dict(market_data.quality_report)
+    if portfolio is not None:
+        for name, frame in portfolio_artifact_frames(portfolio).items():
+            frame.to_csv(output_dir / name, index=False)
+        reconciliation = portfolio.snapshot.reconciliation
+        quality_report["portfolio"] = {
+            "portfolio_snapshot_id": portfolio.snapshot.cash.portfolio_snapshot_id,
+            "exposure_snapshot_id": portfolio.exposure_snapshot_id,
+            "position_count": len(portfolio.positions),
+            "held_instrument_count": len(reconciliation.held_instrument_ids),
+            "missing_market_data_instruments": list(
+                reconciliation.missing_market_data_instruments
+            ),
+            "extra_market_data_instruments_ignored": list(
+                reconciliation.extra_market_data_instruments
+            ),
+            "validation_exceptions": [],
+        }
+    persist_quality_report(quality_report, output_dir / "data_quality_report.json")
+    if market_data.payload.provider == "yahoo":
+        artifacts.append("acquired_adjusted_prices.csv")
+        persist_acquisition(
+            market_data.canonical_records,
+            output_dir / "acquired_adjusted_prices.csv",
+        )
+    manifest = build_run_manifest(config, market_data, artifacts, portfolio)
+    persist_run_manifest(manifest, output_dir / "run_manifest.json")
+
+    print("\nDaily and annualized volatility:")
+    print(vol_summary.to_string(float_format=lambda value: f"{value:.4f}"))
+    print("\nPearson correlation matrix:")
+    print(correlations.to_string(float_format=lambda value: f"{value:.3f}"))
+    print(f"\nHighest pair: {highest[0]} / {highest[1]} ({highest[2]:.3f})")
+    print(f"Lowest pair:  {lowest[0]} / {lowest[1]} ({lowest[2]:.3f})")
+    if portfolio is not None:
+        print(
+            "\nPortfolio value and exposure: "
+            f"NAV {portfolio.portfolio_value:.2f} "
+            f"{portfolio.snapshot.cash.base_currency}, "
+            f"gross {portfolio.gross_exposure:.2f}, "
+            f"net {portfolio.net_instrument_exposure:.2f}"
+        )
+    print(
+        "\nSaved tables, charts, quality report, and manifest to: "
+        f"{output_dir.resolve()}"
+    )
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Parse arguments and convert expected failures into a concise exit message."""
+    try:
+        arguments = _parser().parse_args(argv)
+        run_analysis(_configuration_from_args(arguments))
+    except (MarketDataError, OSError, ValueError) as exc:
+        raise SystemExit(f"Analysis failed: {exc}") from exc
+
+
+if __name__ == "__main__":
+    main()
