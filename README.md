@@ -115,7 +115,7 @@ CSV-provider reuse. There is no automatic fallback to a file or cache.
 ### Local CSV
 
 ```powershell
-historical-asset-risk --provider csv --csv-path examples/data/adjusted_prices.csv --tickers SPY QQQ --start-date 2024-01-01 --end-date 2024-02-01 --rolling-window 3
+historical-asset-risk --provider csv --csv-path examples/data/adjusted_prices.csv --tickers SPY QQQ TLT GLD --start-date 2024-01-01 --end-date 2024-02-01 --rolling-window 3
 ```
 
 The CSV must be in long form. Additional columns are ignored.
@@ -162,6 +162,20 @@ Yahoo runs add `acquired_adjusted_prices.csv`. Portfolio runs add:
 - `validated_positions.csv`
 - `portfolio_valuation.csv`
 - `portfolio_exposure_summary.csv`
+
+## Example results
+
+These figures use 1,004 complete-case daily log returns for `SPY`, `QQQ`,
+`TLT`, and `GLD` from Yahoo Finance adjusted closes, covering January 5, 2021,
+through December 31, 2024. The volatility estimate uses a trailing window of 21
+trading observations, sample standard deviation (`ddof=1`), and square-root-of-
+time annualization with 252 observations per year. The correlation heatmap shows
+full-sample Pearson correlations. Results are historical descriptions, not
+forecasts.
+
+![Rolling annualized volatility for SPY, QQQ, TLT, and GLD](assets/readme/rolling_volatility.png)
+
+![Pearson correlation heatmap for SPY, QQQ, TLT, and GLD daily log returns](assets/readme/correlation_heatmap.png)
 
 ## Statistical conventions
 
@@ -279,6 +293,8 @@ prices = pd.DataFrame(
     {
         "SPY": [100.0, 101.0, 102.0, 101.0, 103.0],
         "QQQ": [50.0, 51.0, 50.0, 52.0, 53.0],
+        "TLT": [90.0, 90.5, 89.5, 91.0, 90.0],
+        "GLD": [180.0, 181.0, 180.5, 182.0, 183.0],
     },
     index=pd.to_datetime(
         ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-08"]
@@ -336,7 +352,7 @@ snapshot = validate_portfolio_snapshot(
     read_instrument_registry(root / "instrument_registry.csv"),
     read_positions(root / "positions.csv"),
     read_cash(root / "cash.csv"),
-    market_data_instruments=("SPY", "QQQ"),
+    market_data_instruments=("SPY", "QQQ", "TLT", "GLD"),
 )
 valuation = value_portfolio(snapshot)
 ```
