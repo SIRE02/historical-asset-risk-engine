@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pandas as pd
 
@@ -36,7 +38,7 @@ def calculate_simple_returns(prices: pd.DataFrame) -> pd.DataFrame:
 def calculate_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """Calculate time-additive log returns and remove invalid observations."""
     _validate_prices(prices)
-    returns = np.log(prices / prices.shift(1))
+    returns = cast(pd.DataFrame, np.log(prices / prices.shift(1)))
     returns = returns.replace([np.inf, -np.inf], np.nan).dropna(how="any")
     if returns.empty:
         raise ValueError("The log-return matrix is empty after cleaning.")
@@ -83,7 +85,7 @@ def summarize_returns(
         }
     )
     empirical_quantiles = log_returns.quantile(
-        probabilities, axis=0, interpolation=method
+        list(probabilities), axis="index", interpolation=method
     )
     for probability in probabilities:
         summary[_quantile_column(probability)] = empirical_quantiles.loc[probability]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import numpy as np
 import pandas as pd
 
@@ -91,12 +93,16 @@ def extreme_correlation_pairs(
     pairs = correlations.where(mask).stack()
     if pairs.empty:
         raise ValueError("No off-diagonal correlation pairs are available.")
-    highest_pair = pairs.idxmax()
-    lowest_pair = pairs.idxmin()
+    highest_pair = cast(tuple[Any, Any], pairs.idxmax())
+    lowest_pair = cast(tuple[Any, Any], pairs.idxmin())
     highest = (
         str(highest_pair[0]),
         str(highest_pair[1]),
-        float(pairs.loc[highest_pair]),
+        float(cast(float, pairs.loc[highest_pair])),
     )
-    lowest = (str(lowest_pair[0]), str(lowest_pair[1]), float(pairs.loc[lowest_pair]))
+    lowest = (
+        str(lowest_pair[0]),
+        str(lowest_pair[1]),
+        float(cast(float, pairs.loc[lowest_pair])),
+    )
     return highest, lowest

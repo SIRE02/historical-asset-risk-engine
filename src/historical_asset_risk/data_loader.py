@@ -224,8 +224,9 @@ def clean_adjusted_prices(
 ) -> pd.DataFrame:
     """Compatibility wrapper for provider-independent wide price validation."""
     symbols = tuple(str(ticker).strip().upper() for ticker in tickers)
-    valid_dates = pd.to_datetime(adjusted_prices.index, errors="coerce")
-    valid_dates = valid_dates[~valid_dates.isna()]
+    valid_dates = pd.DatetimeIndex(
+        pd.to_datetime(adjusted_prices.index, errors="coerce")
+    ).dropna()
     if len(valid_dates) == 0:
         raise MarketDataError("The adjusted-price data contains no valid dates.")
     start = valid_dates.min().date().isoformat()

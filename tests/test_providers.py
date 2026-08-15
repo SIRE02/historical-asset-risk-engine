@@ -76,6 +76,49 @@ def test_yahoo_and_csv_produce_identical_validated_prices(tmp_path: Path) -> Non
     assert csv.payload.provider == "csv"
 
 
+def test_yahoo_acquisition_disables_internal_download_threads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prices = _prices()
+    raw = pd.concat({"Adj Close": prices, "Close": prices + 0.5}, axis=1)
+    captured: dict[str, object] = {}
+
+    def saved_download(**kwargs: object) -> pd.DataFrame:
+        captured.update(kwargs)
+        return raw
+
+    monkeypatch.setattr(
+        "historical_asset_risk.providers.yf.download",
+        saved_download,
+    )
+    config = AnalysisConfig(
+        provider="yahoo",
+        tickers=("AAA", "BBB"),
+        start_date="2024-01-01",
+        end_date="2024-02-01",
+        rolling_window=2,
+    )
+
+    payload = YahooFinanceProvider().acquire(config)
+
+    assert captured == {
+        "tickers": ["AAA", "BBB"],
+        "start": config.start_date,
+        "end": config.end_date,
+        "auto_adjust": False,
+        "actions": False,
+        "progress": False,
+        "group_by": "column",
+        "threads": False,
+    }
+    assert payload.data is raw
+    assert payload.provider == "yahoo"
+    assert payload.metadata == {
+        "adjustment_field": "Adj Close",
+        "end_date_exclusive": True,
+    }
+
+
 def test_quality_report_counts_duplicates_invalid_prices_and_alignment() -> None:
     records = _canonical(_prices())
     records = pd.concat(

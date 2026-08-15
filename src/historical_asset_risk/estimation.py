@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal, cast
 
 DEFAULT_OBSERVATIONS_PER_YEAR = 252
 DEFAULT_ROLLING_WINDOW = 21
@@ -16,6 +16,7 @@ SUPPORTED_QUANTILE_METHODS = frozenset(
     {"linear", "lower", "higher", "midpoint", "nearest"}
 )
 DEFAULT_DOWNSIDE_TARGET = 0.0
+QuantileMethod = Literal["linear", "lower", "higher", "midpoint", "nearest"]
 
 
 def validate_positive_integer(value: object, name: str) -> int:
@@ -47,13 +48,13 @@ def validate_quantiles(quantiles: object) -> tuple[float, ...]:
     return tuple(sorted(set(validated)))
 
 
-def validate_quantile_method(method: object) -> str:
+def validate_quantile_method(method: object) -> QuantileMethod:
     """Return a supported empirical-quantile interpolation method."""
     normalized = str(method).strip().lower()
     if normalized not in SUPPORTED_QUANTILE_METHODS:
         choices = ", ".join(sorted(SUPPORTED_QUANTILE_METHODS))
         raise ValueError(f"QUANTILE_METHOD must be one of: {choices}.")
-    return normalized
+    return cast(QuantileMethod, normalized)
 
 
 def validate_finite_number(value: Any, name: str) -> float:
