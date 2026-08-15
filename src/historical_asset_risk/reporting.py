@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 from datetime import UTC, datetime
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, distribution, version
 from pathlib import Path
 from typing import Any
 
@@ -35,12 +35,55 @@ def _dependency_versions() -> dict[str, str]:
     return result
 
 
+def _installed_vcs_commit() -> str | None:
+    """Return the immutable commit recorded by a VCS package installation."""
+    try:
+        direct_url = distribution("historical-asset-risk-engine").read_text(
+            "direct_url.json"
+        )
+    except PackageNotFoundError:
+        return None
+    if direct_url is None:
+        return None
+    try:
+        metadata = json.loads(direct_url)
+    except json.JSONDecodeError:
+        return None
+    vcs_info = metadata.get("vcs_info")
+    if not isinstance(vcs_info, dict):
+        return None
+    commit = vcs_info.get("commit_id")
+    return commit if isinstance(commit, str) and commit else None
+
+
+def _source_repository_root() -> Path | None:
+    """Locate this package's source checkout without consulting the caller's cwd."""
+    for candidate in Path(__file__).resolve().parents:
+        pyproject = candidate / "pyproject.toml"
+        if not (candidate / ".git").exists() or not pyproject.is_file():
+            continue
+        try:
+            contents = pyproject.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if 'name = "historical-asset-risk-engine"' in contents:
+            return candidate
+    return None
+
+
 def _git_commit() -> str | None:
+    installed_commit = _installed_vcs_commit()
+    if installed_commit is not None:
+        return installed_commit
+    repository_root = _source_repository_root()
+    if repository_root is None:
+        return None
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             check=True,
             capture_output=True,
+            cwd=repository_root,
             text=True,
             timeout=5,
         )

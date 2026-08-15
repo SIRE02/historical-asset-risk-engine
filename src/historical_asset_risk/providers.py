@@ -112,7 +112,10 @@ class YahooFinanceProvider:
                 actions=False,
                 progress=False,
                 group_by="column",
-                threads=True,
+                # Sequential requests avoid yfinance's shared SQLite cache races.
+                # Acquisition is infrequent and reliability outweighs the small
+                # speed benefit for the repository's modest ticker sets.
+                threads=False,
             )
         except Exception as exc:  # yfinance exposes backend-specific exceptions
             raise MarketDataError(f"Market-data download failed: {exc}") from exc

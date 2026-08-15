@@ -7,4 +7,4 @@ dependencies:
   - pip
   - setuptools>=75
   - pip:
-      - -r requirements.txt
+      - -r requirements.lock

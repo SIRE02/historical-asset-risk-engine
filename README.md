@@ -37,7 +37,7 @@ Python 3.12 or later is required.
 ```powershell
 conda env create -f environment.yml
 conda activate historical-asset-risk-engine
-python -m pip install -e .
+python -m pip install --no-deps --no-build-isolation -e .
 ```
 
 To update an existing environment:
@@ -45,8 +45,11 @@ To update an existing environment:
 ```powershell
 conda env update -n historical-asset-risk-engine -f environment.yml --prune
 conda activate historical-asset-risk-engine
-python -m pip install -e .
+python -m pip install --no-deps --no-build-isolation -e .
 ```
+
+`environment.yml` installs the exact Python resolution in `requirements.lock`.
+CI follows these same steps so the documented setup is continuously tested.
 
 ## Quick start
 
@@ -105,7 +108,17 @@ Precedence is command line, then configuration file, then built-in defaults.
 
 Yahoo is the default provider. The adapter uses `yfinance` with
 `auto_adjust=False`, explicitly selects `Adj Close`, and never substitutes raw
-closing prices.
+closing prices. Requested tickers are downloaded sequentially to avoid races in
+`yfinance`'s shared SQLite cache; this affects acquisition speed, not the returned
+price definition or downstream calculations.
+
+If Yahoo reports `database is locked`, close other Python processes using
+`yfinance`, remove its local cache, and retry:
+
+```powershell
+python -c "import yfinance as yf; print(yf.cache.get_cache_location())"
+# Remove the printed cache directory only after checking the path.
+```
 
 A successful Yahoo run also writes `acquired_adjusted_prices.csv`: normalized,
 requested, in-range records after duplicate and price-value handling but before
@@ -374,7 +387,9 @@ scope filters.
 
 `run_manifest.json` records:
 
-- Package version, Git commit when available, and execution time
+- Package version, source commit when available, and execution time. VCS installs
+  use their immutable installation metadata; editable source checkouts query only
+  this package's repository, never the caller's working directory.
 - Effective configuration
 - Actual provider, source, read/acquisition time, range, and instruments
 - Dependency versions
@@ -413,7 +428,8 @@ conda run -n historical-asset-risk-engine python -m pytest -q
 Run all CI checks:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements.lock
+python -m pip install --no-deps --no-build-isolation -e .
 python -m ruff format --check .
 python -m ruff check .
 python -m mypy
