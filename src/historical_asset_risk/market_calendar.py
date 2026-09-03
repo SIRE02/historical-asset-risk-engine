@@ -114,6 +114,25 @@ class MarketCalendar:
             and session_date not in _SPECIAL_CLOSURES
         )
 
+    def next_session(self, session_date: date) -> date:
+        """Return the first valid session strictly after ``session_date``.
+
+        Used for one-day proxy realization: a realization after the close on
+        date ``t`` is aligned to the next valid session on this calendar, not
+        necessarily the next civil day.
+        """
+        candidate = session_date + timedelta(days=1)
+        # A single week never contains more than the weekend plus a short run of
+        # holidays; the supported-year guard in ``is_session`` bounds the search.
+        for _ in range(10):
+            if self.is_session(candidate):
+                return candidate
+            candidate += timedelta(days=1)
+        raise PortfolioCalendarError(
+            f"No {self.calendar_id} session found within 10 days after "
+            f"{session_date.isoformat()}."
+        )
+
 
 def resolve_market_calendar(
     calendar_id: str, required_version: str | None = None

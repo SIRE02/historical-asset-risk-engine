@@ -20,6 +20,34 @@ PORTFOLIO_EXPOSURE_SCHEMA_ID = "historical-asset-risk/portfolio-exposure-summary
 PORTFOLIO_EXPOSURE_SCHEMA_VERSION = "1.experimental"
 EXPOSURE_SNAPSHOT_SCHEMA_VERSION = "1.experimental"
 
+# --- Phase 4: portfolio P&L, aggregation, and realizations ---------------------
+# Simple-return artifacts are deliberately distinct in schema id and units from
+# the Phase 2 log-return covariance/correlation descriptive artifacts.
+PHASE4_SCHEMA_VERSION = "1.experimental"
+PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-aligned-simple-returns"
+)
+HYPOTHETICAL_PNL_SCHEMA_ID = "historical-asset-risk/hypothetical-portfolio-pnl"
+PROXY_REALIZED_PNL_SCHEMA_ID = "historical-asset-risk/proxy-realized-portfolio-pnl"
+RISK_REALIZATIONS_SCHEMA_ID = "historical-asset-risk/risk-realizations"
+# Independent of the artifact schema version: identifies the realization
+# calculation so a downstream engine can pin the identity it joins forecasts to.
+RISK_REALIZATION_CALCULATION_VERSION = "historical-asset-risk/proxy-realization@1"
+SIMPLE_RETURN_COVARIANCE_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-simple-return-covariance"
+)
+SIMPLE_RETURN_CORRELATION_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-simple-return-correlation"
+)
+SIMPLE_RETURN_SUMMARY_SCHEMA_ID = "historical-asset-risk/simple-return-summary"
+PORTFOLIO_RISK_SUMMARY_SCHEMA_ID = "historical-asset-risk/portfolio-risk-summary"
+PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-risk-contributions"
+)
+PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-concentration-summary"
+)
+
 
 class PortfolioError(ValueError):
     """Base class for readable portfolio-domain failures."""
@@ -79,6 +107,14 @@ class NonPositivePortfolioValueError(PortfolioError):
 
 class ArtifactSchemaError(PortfolioSchemaError):
     """Raised when a persisted artifact has no supported declared schema."""
+
+
+class PortfolioReturnAlignmentError(PortfolioError):
+    """Raised when held instruments cannot be aligned to a simple-return matrix."""
+
+
+class PortfolioCovarianceError(PortfolioError):
+    """Raised when a simple-return covariance sample is too small or degenerate."""
 
 
 class InstrumentType(StrEnum):
@@ -211,6 +247,20 @@ class PortfolioValuation:
 
 __all__ = [
     "ArtifactSchemaError",
+    "HYPOTHETICAL_PNL_SCHEMA_ID",
+    "PHASE4_SCHEMA_VERSION",
+    "PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID",
+    "PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID",
+    "PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID",
+    "PORTFOLIO_RISK_SUMMARY_SCHEMA_ID",
+    "PROXY_REALIZED_PNL_SCHEMA_ID",
+    "RISK_REALIZATION_CALCULATION_VERSION",
+    "PortfolioCovarianceError",
+    "PortfolioReturnAlignmentError",
+    "RISK_REALIZATIONS_SCHEMA_ID",
+    "SIMPLE_RETURN_CORRELATION_SCHEMA_ID",
+    "SIMPLE_RETURN_COVARIANCE_SCHEMA_ID",
+    "SIMPLE_RETURN_SUMMARY_SCHEMA_ID",
     "CASH_SCHEMA_ID",
     "CASH_SCHEMA_VERSION",
     "Cash",

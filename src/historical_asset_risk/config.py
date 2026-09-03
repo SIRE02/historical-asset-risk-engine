@@ -39,6 +39,8 @@ DEFAULT_CONFIGURATION: dict[str, Any] = {
     "instrument_registry_path": None,
     "positions_path": None,
     "cash_path": None,
+    "positions_history_path": None,
+    "cash_history_path": None,
 }
 
 
@@ -61,6 +63,8 @@ class AnalysisConfig:
     instrument_registry_path: Path | None = None
     positions_path: Path | None = None
     cash_path: Path | None = None
+    positions_history_path: Path | None = None
+    cash_history_path: Path | None = None
 
     def __post_init__(self) -> None:
         provider = str(self.provider).strip().lower()
@@ -136,6 +140,33 @@ class AnalysisConfig:
                 raise ValueError(f"{name} does not identify a readable file: {path}")
             normalized_portfolio_paths[name] = path
 
+        history_paths = {
+            "POSITIONS_HISTORY_PATH": self.positions_history_path,
+            "CASH_HISTORY_PATH": self.cash_history_path,
+        }
+        supplied_history = {
+            name: value for name, value in history_paths.items() if value is not None
+        }
+        if supplied_history:
+            if len(supplied_history) != len(history_paths):
+                missing = sorted(set(history_paths) - set(supplied_history))
+                raise ValueError(
+                    "Proxy realized P&L requires both history paths; missing "
+                    + ", ".join(missing)
+                    + "."
+                )
+            if not supplied_portfolio_paths:
+                raise ValueError(
+                    "POSITIONS_HISTORY_PATH and CASH_HISTORY_PATH require the "
+                    "primary portfolio paths as well."
+                )
+        normalized_history_paths: dict[str, Path | None] = {}
+        for name, value in history_paths.items():
+            path = Path(value).expanduser() if value is not None else None
+            if path is not None and not path.is_file():
+                raise ValueError(f"{name} does not identify a readable file: {path}")
+            normalized_history_paths[name] = path
+
         object.__setattr__(self, "provider", provider)
         object.__setattr__(self, "tickers", symbols)
         object.__setattr__(self, "quantiles", quantiles)
@@ -153,6 +184,14 @@ class AnalysisConfig:
             self, "positions_path", normalized_portfolio_paths["POSITIONS_PATH"]
         )
         object.__setattr__(self, "cash_path", normalized_portfolio_paths["CASH_PATH"])
+        object.__setattr__(
+            self,
+            "positions_history_path",
+            normalized_history_paths["POSITIONS_HISTORY_PATH"],
+        )
+        object.__setattr__(
+            self, "cash_history_path", normalized_history_paths["CASH_HISTORY_PATH"]
+        )
 
     @property
     def portfolio_enabled(self) -> bool:
@@ -176,6 +215,16 @@ class AnalysisConfig:
         )
         values["cash_path"] = (
             str(self.cash_path) if self.cash_path is not None else None
+        )
+        values["positions_history_path"] = (
+            str(self.positions_history_path)
+            if self.positions_history_path is not None
+            else None
+        )
+        values["cash_history_path"] = (
+            str(self.cash_history_path)
+            if self.cash_history_path is not None
+            else None
         )
         return values
 
@@ -242,7 +291,13 @@ def load_configuration(
     values["output_dir"] = Path(values["output_dir"])
     if values.get("csv_path") is not None:
         values["csv_path"] = Path(values["csv_path"])
-    for path_name in ("instrument_registry_path", "positions_path", "cash_path"):
+    for path_name in (
+        "instrument_registry_path",
+        "positions_path",
+        "cash_path",
+        "positions_history_path",
+        "cash_history_path",
+    ):
         if values.get(path_name) is not None:
             values[path_name] = Path(values[path_name])
     return AnalysisConfig(**values)

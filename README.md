@@ -176,6 +176,30 @@ Yahoo runs add `acquired_adjusted_prices.csv`. Portfolio runs add:
 - `portfolio_valuation.csv`
 - `portfolio_exposure_summary.csv`
 
+Portfolio runs also emit the Phase 4 book P&L and risk layer:
+
+- `portfolio_aligned_simple_returns.csv` — held-book simple returns aligned by
+  `instrument_id` with explicit intervals
+- `hypothetical_portfolio_pnl.csv` — current-book historical simulation P&L and
+  loss (`loss = -pnl`) over each return interval
+- `portfolio_simple_return_covariance.csv`,
+  `portfolio_simple_return_correlation.csv`,
+  `simple_return_summary.csv` — sample simple-return covariance risk inputs,
+  distinct in schema id and units from the log-return `covariance_matrix.csv`
+- `portfolio_risk_summary.csv` — return- and currency-space variance and
+  volatility from `w' Sigma w` / `x' Sigma x`, with a labeled
+  square-root-of-time annualized volatility
+- `portfolio_risk_contributions.csv` — Euler marginal, component, and percentage
+  volatility contributions; negative hedge contributions are kept, not clipped
+- `portfolio_concentration_summary.csv` — gross weight, Herfindahl, effective
+  names
+
+Passing `--positions-history-path` and `--cash-history-path` (an ordered
+collection of dated Phase 3 snapshots, same row schema) additionally writes
+`proxy_realized_portfolio_pnl.csv` and the versioned `risk_realizations.csv`
+identity that a downstream forecasting engine can join its own predictions to.
+HARE does not generate forecasts or run coverage tests.
+
 ## Example results
 
 These figures use 1,004 complete-case daily log returns for `SPY`, `QQQ`,

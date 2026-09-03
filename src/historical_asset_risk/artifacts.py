@@ -13,12 +13,23 @@ from typing import Any
 import pandas as pd
 
 from historical_asset_risk.contracts import (
+    HYPOTHETICAL_PNL_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_VERSION,
+    PHASE4_SCHEMA_VERSION,
+    PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
+    PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
     PORTFOLIO_EXPOSURE_SCHEMA_ID,
     PORTFOLIO_EXPOSURE_SCHEMA_VERSION,
+    PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
+    PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
     PORTFOLIO_VALUATION_SCHEMA_ID,
     PORTFOLIO_VALUATION_SCHEMA_VERSION,
+    PROXY_REALIZED_PNL_SCHEMA_ID,
+    RISK_REALIZATIONS_SCHEMA_ID,
+    SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
+    SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
+    SIMPLE_RETURN_SUMMARY_SCHEMA_ID,
     VALIDATED_POSITIONS_SCHEMA_ID,
     VALIDATED_POSITIONS_SCHEMA_VERSION,
     ArtifactSchemaError,
@@ -141,6 +152,46 @@ ARTIFACT_SCHEMAS: dict[str, tuple[str, str]] = {
         "historical-asset-risk/run-manifest",
         TABULAR_ARTIFACT_SCHEMA_VERSION,
     ),
+    "portfolio_aligned_simple_returns.csv": (
+        PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "hypothetical_portfolio_pnl.csv": (
+        HYPOTHETICAL_PNL_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "proxy_realized_portfolio_pnl.csv": (
+        PROXY_REALIZED_PNL_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "risk_realizations.csv": (
+        RISK_REALIZATIONS_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "portfolio_simple_return_covariance.csv": (
+        SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "portfolio_simple_return_correlation.csv": (
+        SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "simple_return_summary.csv": (
+        SIMPLE_RETURN_SUMMARY_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "portfolio_risk_summary.csv": (
+        PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "portfolio_risk_contributions.csv": (
+        PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
+    "portfolio_concentration_summary.csv": (
+        PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
+        PHASE4_SCHEMA_VERSION,
+    ),
 }
 ARTIFACT_UNITS: dict[str, str] = {
     "acquired_adjusted_prices.csv": "provider_adjusted_price",
@@ -160,6 +211,16 @@ ARTIFACT_UNITS: dict[str, str] = {
     "portfolio_exposure_summary.csv": "decimal_ratio",
     "data_quality_report.json": "structured_counts_and_lineage",
     "run_manifest.json": "structured_lineage",
+    "portfolio_aligned_simple_returns.csv": "decimal_simple_return_per_interval",
+    "hypothetical_portfolio_pnl.csv": "base_currency_pnl_loss_is_positive",
+    "proxy_realized_portfolio_pnl.csv": "base_currency_pnl_loss_is_positive",
+    "risk_realizations.csv": "base_currency_loss_identity",
+    "portfolio_simple_return_covariance.csv": "daily_simple_return_squared",
+    "portfolio_simple_return_correlation.csv": "dimensionless",
+    "simple_return_summary.csv": "mixed_units_by_named_column",
+    "portfolio_risk_summary.csv": "mixed_units_by_named_column",
+    "portfolio_risk_contributions.csv": "mixed_units_by_named_column",
+    "portfolio_concentration_summary.csv": "mixed_units_by_named_column",
 }
 
 _VALIDATED_INSTRUMENT_OUTPUT_COLUMNS = INSTRUMENT_COLUMNS + ("schema_version",)

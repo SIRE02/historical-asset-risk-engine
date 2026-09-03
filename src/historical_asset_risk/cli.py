@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import defaultdict
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,12 @@ from historical_asset_risk.artifacts import (
     read_positions,
 )
 from historical_asset_risk.config import AnalysisConfig, load_configuration
-from historical_asset_risk.contracts import PortfolioValuation
+from historical_asset_risk.contracts import (
+    Cash,
+    Instrument,
+    PortfolioValuation,
+    Position,
+)
 from historical_asset_risk.correlation import (
     correlation_matrix,
     covariance_matrix,
@@ -29,7 +35,10 @@ from historical_asset_risk.data_loader import (
     persist_acquisition,
     persist_quality_report,
 )
+from historical_asset_risk.phase4 import Phase4Result, compute_phase4
+from historical_asset_risk.pnl import ProxyExposureSnapshot
 from historical_asset_risk.portfolio import (
+    calculate_currency_valuation,
     validate_portfolio_snapshot,
     value_portfolio,
 )
@@ -85,6 +94,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--instrument-registry-path", type=Path)
     parser.add_argument("--positions-path", type=Path)
     parser.add_argument("--cash-path", type=Path)
+    parser.add_argument("--positions-history-path", type=Path)
+    parser.add_argument("--cash-history-path", type=Path)
     return parser
 
 
@@ -121,11 +132,15 @@ def _configuration_from_args(arguments: argparse.Namespace) -> AnalysisConfig:
         "instrument_registry_path": arguments.instrument_registry_path,
         "positions_path": arguments.positions_path,
         "cash_path": arguments.cash_path,
+        "positions_history_path": arguments.positions_history_path,
+        "cash_history_path": arguments.cash_history_path,
     }
     return load_configuration(arguments.config, overrides)
 
 
-def _load_and_value_portfolio(config: AnalysisConfig) -> PortfolioValuation | None:
+def _load_and_value_portfolio(
+    config: AnalysisConfig,
+) -> tuple[PortfolioValuation, tuple[Instrument, ...]] | None:
     if not config.portfolio_enabled:
         return None
     assert config.instrument_registry_path is not None
@@ -140,7 +155,59 @@ def _load_and_value_portfolio(config: AnalysisConfig) -> PortfolioValuation | No
         cash,
         market_data_instruments=config.tickers,
     )
-    return value_portfolio(snapshot)
+    return value_portfolio(snapshot), instruments
+
+
+def _load_exposure_history(
+    config: AnalysisConfig, instruments: tuple[Instrument, ...]
+) -> list[ProxyExposureSnapshot]:
+    if config.positions_history_path is None:
+        return []
+    assert config.cash_history_path is not None
+    positions = read_positions(config.positions_history_path)
+    cash_records = read_cash(config.cash_history_path)
+    cash_by_snapshot: dict[str, list[Cash]] = defaultdict(list)
+    for record in cash_records:
+        cash_by_snapshot[record.portfolio_snapshot_id].append(record)
+    positions_by_snapshot: dict[str, list[Position]] = defaultdict(list)
+    for position in positions:
+        positions_by_snapshot[position.portfolio_snapshot_id].append(position)
+
+    history: list[ProxyExposureSnapshot] = []
+    for snapshot_id, snapshot_positions in positions_by_snapshot.items():
+        snapshot_cash = cash_by_snapshot.get(snapshot_id, [])
+        if len(snapshot_cash) != 1:
+            raise ValueError(
+                f"Exposure-history snapshot {snapshot_id!r} needs exactly one cash "
+                f"row; found {len(snapshot_cash)}."
+            )
+        validated = validate_portfolio_snapshot(
+            instruments,
+            snapshot_positions,
+            (snapshot_cash[0],),
+            market_data_instruments=config.tickers,
+        )
+        currency = calculate_currency_valuation(validated)
+        history.append(
+            ProxyExposureSnapshot(
+                portfolio_snapshot_id=snapshot_cash[0].portfolio_snapshot_id,
+                portfolio_id=snapshot_cash[0].portfolio_id,
+                exposure_snapshot_id=currency.exposure_snapshot_id,
+                as_of_date=snapshot_cash[0].as_of_date,
+                market_calendar_id=snapshot_cash[0].market_calendar_id,
+                currency_exposures={
+                    item.position.instrument_id: item.position_value
+                    for item in currency.positions
+                },
+            )
+        )
+    extra_cash = sorted(set(cash_by_snapshot) - set(positions_by_snapshot))
+    if extra_cash:
+        raise ValueError(
+            "Exposure-history cash rows without positions: " + ", ".join(extra_cash)
+        )
+    history.sort(key=lambda snapshot: snapshot.as_of_date)
+    return history
 
 
 def _prevent_snapshot_overwrite(
@@ -171,7 +238,16 @@ def run_analysis(
 ) -> None:
     """Run the complete analysis from one validated configuration."""
     config = config or load_configuration()
-    portfolio = _load_and_value_portfolio(config)
+    loaded_portfolio = _load_and_value_portfolio(config)
+    portfolio = loaded_portfolio[0] if loaded_portfolio is not None else None
+    registry_instruments = (
+        loaded_portfolio[1] if loaded_portfolio is not None else ()
+    )
+    exposure_history = (
+        _load_exposure_history(config, registry_instruments)
+        if loaded_portfolio is not None
+        else []
+    )
     selected_provider = provider or provider_for(config)
     print(
         f"Loading adjusted prices from {config.provider} for "
@@ -204,6 +280,28 @@ def run_analysis(
     )
     highest, lowest = extreme_correlation_pairs(correlations)
 
+    phase4_result: Phase4Result | None = None
+    if portfolio is not None:
+        data_source = {
+            "provider": market_data.payload.provider,
+            "source": market_data.payload.source,
+            "actual_start_date": market_data.quality_report["first_common_date"],
+            "actual_end_date": market_data.quality_report["last_common_date"],
+            "observation_count": market_data.quality_report[
+                "common_date_count_after_alignment"
+            ],
+            "instruments": list(prices.columns),
+        }
+        phase4_result = compute_phase4(
+            portfolio,
+            simple_returns,
+            prices.index,
+            data_source=data_source,
+            observations_per_year=config.observations_per_year,
+            registry_instruments=registry_instruments,
+            exposure_history=exposure_history,
+        )
+
     output_dir = config.output_dir
     _prevent_snapshot_overwrite(output_dir, portfolio)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -232,6 +330,8 @@ def run_analysis(
                 "portfolio_exposure_summary.csv",
             ]
         )
+    if phase4_result is not None:
+        artifacts.extend(sorted(phase4_result.frames))
     prices.to_csv(output_dir / "adjusted_prices.csv", index_label="date")
     simple_returns.to_csv(output_dir / "simple_returns.csv", index_label="date")
     log_returns.to_csv(output_dir / "log_returns.csv", index_label="date")
@@ -268,6 +368,10 @@ def run_analysis(
             ),
             "validation_exceptions": [],
         }
+        if phase4_result is not None:
+            for name, frame in phase4_result.frames.items():
+                frame.to_csv(output_dir / name, index=False)
+            quality_report["portfolio"]["phase4"] = phase4_result.quality_section
     persist_quality_report(quality_report, output_dir / "data_quality_report.json")
     if market_data.payload.provider == "yahoo":
         artifacts.append("acquired_adjusted_prices.csv")
@@ -276,6 +380,8 @@ def run_analysis(
             output_dir / "acquired_adjusted_prices.csv",
         )
     manifest = build_run_manifest(config, market_data, artifacts, portfolio)
+    if phase4_result is not None:
+        manifest["portfolio_phase4"] = phase4_result.manifest_section
     persist_run_manifest(manifest, output_dir / "run_manifest.json")
 
     print("\nDaily and annualized volatility:")
@@ -292,6 +398,9 @@ def run_analysis(
             f"gross {portfolio.gross_exposure:.2f}, "
             f"net {portfolio.net_instrument_exposure:.2f}"
         )
+    if phase4_result is not None:
+        for line in phase4_result.summary_lines:
+            print(line)
     print(
         "\nSaved tables, charts, quality report, and manifest to: "
         f"{output_dir.resolve()}"
