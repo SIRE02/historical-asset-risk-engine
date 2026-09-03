@@ -343,3 +343,6 @@ def load_configuration(
         if values.get(path_name) is not None:
             values[path_name] = Path(values[path_name])
     return AnalysisConfig(**values)
+
+
+__all__ = ["AnalysisConfig", "DEFAULT_CONFIGURATION", "load_configuration"]

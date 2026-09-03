@@ -183,3 +183,15 @@ def provider_for(config: AnalysisConfig) -> MarketDataProvider:
     if config.provider == "csv":
         return CSVProvider()
     raise ValueError(f"Unsupported provider: {config.provider}")
+
+
+__all__ = [
+    "CANONICAL_COLUMNS",
+    "CSVProvider",
+    "MarketDataError",
+    "MarketDataProvider",
+    "ProviderPayload",
+    "YahooFinanceProvider",
+    "extract_yahoo_adjusted_close",
+    "provider_for",
+]

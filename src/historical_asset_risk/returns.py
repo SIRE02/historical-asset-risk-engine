@@ -98,3 +98,10 @@ def summarize_returns(
     summary["sample_excess_kurtosis"] = log_returns.kurt()
     summary["downside_deviation"] = np.sqrt(shortfalls.pow(2).sum() / non_missing_count)
     return summary
+
+
+__all__ = [
+    "calculate_log_returns",
+    "calculate_simple_returns",
+    "summarize_returns",
+]

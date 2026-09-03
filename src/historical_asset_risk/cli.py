@@ -461,5 +461,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(f"Analysis failed: {exc}") from exc
 
 
+__all__ = ["main", "run_analysis"]
+
+
 if __name__ == "__main__":
     main()

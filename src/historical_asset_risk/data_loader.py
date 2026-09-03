@@ -264,3 +264,15 @@ def download_adjusted_prices(
         rolling_window=rolling_window,
     )
     return load_market_data(config, YahooFinanceProvider()).prices
+
+
+__all__ = [
+    "MarketDataResult",
+    "clean_adjusted_prices",
+    "download_adjusted_prices",
+    "load_market_data",
+    "normalize_and_validate",
+    "persist_acquisition",
+    "persist_quality_report",
+    "validate_configuration",
+]

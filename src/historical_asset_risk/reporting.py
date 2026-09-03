@@ -208,3 +208,6 @@ def build_run_manifest(
 def persist_run_manifest(manifest: dict[str, Any], path: Path) -> None:
     """Write a deterministic, human-readable JSON manifest."""
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
+__all__ = ["build_run_manifest", "persist_run_manifest"]
