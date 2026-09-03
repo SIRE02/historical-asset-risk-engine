@@ -19,14 +19,24 @@ from historical_asset_risk.portfolio_risk import (
     simple_return_correlation,
     simple_return_summary,
 )
+from historical_asset_risk.tail_risk import (
+    historical_es,
+    historical_var,
+    normal_es,
+    normal_var,
+)
 
 __all__ = [
     "__version__",
     "align_portfolio_simple_returns",
     "compound_simple_returns",
+    "historical_es",
+    "historical_var",
     "hypothetical_pnl",
     "load_artifact",
     "map_provider_tickers_to_instrument_ids",
+    "normal_es",
+    "normal_var",
     "portfolio_risk_from_covariance",
     "proxy_realized_pnl",
     "sample_simple_return_covariance",
