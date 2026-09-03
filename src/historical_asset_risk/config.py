@@ -41,6 +41,9 @@ DEFAULT_CONFIGURATION: dict[str, Any] = {
     "cash_path": None,
     "positions_history_path": None,
     "cash_history_path": None,
+    "tail_risk_confidence_level": 0.95,
+    "tail_risk_window": None,
+    "stress_catalog_path": None,
 }
 
 
@@ -65,6 +68,9 @@ class AnalysisConfig:
     cash_path: Path | None = None
     positions_history_path: Path | None = None
     cash_history_path: Path | None = None
+    tail_risk_confidence_level: float = 0.95
+    tail_risk_window: int | None = None
+    stress_catalog_path: Path | None = None
 
     def __post_init__(self) -> None:
         provider = str(self.provider).strip().lower()
@@ -167,6 +173,34 @@ class AnalysisConfig:
                 raise ValueError(f"{name} does not identify a readable file: {path}")
             normalized_history_paths[name] = path
 
+        confidence = validate_finite_number(
+            self.tail_risk_confidence_level, "TAIL_RISK_CONFIDENCE_LEVEL"
+        )
+        if not 0.5 < confidence < 1.0:
+            raise ValueError(
+                "TAIL_RISK_CONFIDENCE_LEVEL must satisfy 0.5 < alpha < 1."
+            )
+        window = self.tail_risk_window
+        if window is not None:
+            validate_positive_integer(window, "TAIL_RISK_WINDOW")
+            if window < 2:
+                raise ValueError("TAIL_RISK_WINDOW must be at least 2.")
+        stress_catalog_path = (
+            Path(self.stress_catalog_path).expanduser()
+            if self.stress_catalog_path is not None
+            else None
+        )
+        if stress_catalog_path is not None:
+            if not supplied_portfolio_paths:
+                raise ValueError(
+                    "STRESS_CATALOG_PATH requires the portfolio paths as well."
+                )
+            if not stress_catalog_path.is_file():
+                raise ValueError(
+                    "STRESS_CATALOG_PATH does not identify a readable file: "
+                    f"{stress_catalog_path}"
+                )
+
         object.__setattr__(self, "provider", provider)
         object.__setattr__(self, "tickers", symbols)
         object.__setattr__(self, "quantiles", quantiles)
@@ -192,6 +226,8 @@ class AnalysisConfig:
         object.__setattr__(
             self, "cash_history_path", normalized_history_paths["CASH_HISTORY_PATH"]
         )
+        object.__setattr__(self, "tail_risk_confidence_level", confidence)
+        object.__setattr__(self, "stress_catalog_path", stress_catalog_path)
 
     @property
     def portfolio_enabled(self) -> bool:
@@ -224,6 +260,11 @@ class AnalysisConfig:
         values["cash_history_path"] = (
             str(self.cash_history_path)
             if self.cash_history_path is not None
+            else None
+        )
+        values["stress_catalog_path"] = (
+            str(self.stress_catalog_path)
+            if self.stress_catalog_path is not None
             else None
         )
         return values
@@ -297,6 +338,7 @@ def load_configuration(
         "cash_path",
         "positions_history_path",
         "cash_history_path",
+        "stress_catalog_path",
     ):
         if values.get(path_name) is not None:
             values[path_name] = Path(values[path_name])

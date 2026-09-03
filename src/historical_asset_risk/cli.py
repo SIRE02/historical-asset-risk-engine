@@ -36,7 +36,8 @@ from historical_asset_risk.data_loader import (
     persist_quality_report,
 )
 from historical_asset_risk.phase4 import Phase4Result, compute_phase4
-from historical_asset_risk.pnl import ProxyExposureSnapshot
+from historical_asset_risk.phase5 import Phase5Result, compute_phase5
+from historical_asset_risk.pnl import ProxyExposureSnapshot, compute_data_snapshot_id
 from historical_asset_risk.portfolio import (
     calculate_currency_valuation,
     validate_portfolio_snapshot,
@@ -50,6 +51,7 @@ from historical_asset_risk.returns import (
     summarize_returns,
 )
 from historical_asset_risk.risk_metrics import rolling_volatility, volatility_summary
+from historical_asset_risk.stress import load_stress_catalog
 from historical_asset_risk.visualizations import (
     plot_correlation_heatmap,
     plot_rolling_volatility,
@@ -96,6 +98,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--cash-path", type=Path)
     parser.add_argument("--positions-history-path", type=Path)
     parser.add_argument("--cash-history-path", type=Path)
+    parser.add_argument("--tail-risk-confidence-level", type=float)
+    parser.add_argument("--tail-risk-window", type=int)
+    parser.add_argument("--stress-catalog-path", type=Path)
     return parser
 
 
@@ -134,6 +139,9 @@ def _configuration_from_args(arguments: argparse.Namespace) -> AnalysisConfig:
         "cash_path": arguments.cash_path,
         "positions_history_path": arguments.positions_history_path,
         "cash_history_path": arguments.cash_history_path,
+        "tail_risk_confidence_level": arguments.tail_risk_confidence_level,
+        "tail_risk_window": arguments.tail_risk_window,
+        "stress_catalog_path": arguments.stress_catalog_path,
     }
     return load_configuration(arguments.config, overrides)
 
@@ -302,6 +310,25 @@ def run_analysis(
             exposure_history=exposure_history,
         )
 
+    phase5_result: Phase5Result | None = None
+    if portfolio is not None:
+        stress_scenarios = (
+            load_stress_catalog(config.stress_catalog_path)
+            if config.stress_catalog_path is not None
+            else ()
+        )
+        phase5_result = compute_phase5(
+            portfolio,
+            simple_returns,
+            prices.index,
+            data_snapshot_id=compute_data_snapshot_id(data_source),
+            confidence_level=config.tail_risk_confidence_level,
+            window=config.tail_risk_window,
+            registry_instruments=registry_instruments,
+            exposure_history=exposure_history,
+            stress_scenarios=stress_scenarios,
+        )
+
     output_dir = config.output_dir
     _prevent_snapshot_overwrite(output_dir, portfolio)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -332,6 +359,10 @@ def run_analysis(
         )
     if phase4_result is not None:
         artifacts.extend(sorted(phase4_result.frames))
+    if phase5_result is not None:
+        artifacts.extend(sorted(phase5_result.frames))
+        if phase5_result.catalog_json is not None:
+            artifacts.append("stress_scenario_catalog.json")
     prices.to_csv(output_dir / "adjusted_prices.csv", index_label="date")
     simple_returns.to_csv(output_dir / "simple_returns.csv", index_label="date")
     log_returns.to_csv(output_dir / "log_returns.csv", index_label="date")
@@ -372,6 +403,15 @@ def run_analysis(
             for name, frame in phase4_result.frames.items():
                 frame.to_csv(output_dir / name, index=False)
             quality_report["portfolio"]["phase4"] = phase4_result.quality_section
+        if phase5_result is not None:
+            for name, frame in phase5_result.frames.items():
+                frame.to_csv(output_dir / name, index=False)
+            if phase5_result.catalog_json is not None:
+                (output_dir / "stress_scenario_catalog.json").write_text(
+                    json.dumps(phase5_result.catalog_json, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            quality_report["portfolio"]["phase5"] = phase5_result.quality_section
     persist_quality_report(quality_report, output_dir / "data_quality_report.json")
     if market_data.payload.provider == "yahoo":
         artifacts.append("acquired_adjusted_prices.csv")
@@ -382,6 +422,8 @@ def run_analysis(
     manifest = build_run_manifest(config, market_data, artifacts, portfolio)
     if phase4_result is not None:
         manifest["portfolio_phase4"] = phase4_result.manifest_section
+    if phase5_result is not None:
+        manifest["portfolio_phase5"] = phase5_result.manifest_section
     persist_run_manifest(manifest, output_dir / "run_manifest.json")
 
     print("\nDaily and annualized volatility:")
@@ -400,6 +442,9 @@ def run_analysis(
         )
     if phase4_result is not None:
         for line in phase4_result.summary_lines:
+            print(line)
+    if phase5_result is not None:
+        for line in phase5_result.summary_lines:
             print(line)
     print(
         "\nSaved tables, charts, quality report, and manifest to: "

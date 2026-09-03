@@ -200,6 +200,25 @@ collection of dated Phase 3 snapshots, same row schema) additionally writes
 identity that a downstream forecasting engine can join its own predictions to.
 HARE does not generate forecasts or run coverage tests.
 
+Portfolio runs also measure the tail of that released loss sample (Phase 5):
+
+- `portfolio_value_at_risk.csv` — canonical historical VaR
+  `L_(ceil(n * alpha))`, in return and currency dimensions, never floored at
+  zero. The descriptive `--quantile-method` never redefines this.
+- `portfolio_expected_shortfall.csv` plus
+  `portfolio_expected_shortfall_tail_weights.csv` — exact finite-sample ES with
+  the audit weights that produce it
+- `tail_risk_comparison.csv` — historical VaR/ES beside the mean-included and
+  zero-mean Gaussian benchmarks (a comparison, not a normality claim)
+- `trailing_portfolio_tail_risk.csv` — with an exposure history, VaR/ES rebuilt
+  at each `as_of_date` from that day's snapshot; a risk report, not a forecast
+
+Set `--tail-risk-confidence-level` (default 0.95) and `--tail-risk-window`.
+Passing `--stress-catalog-path` (a hash-verified scenario catalog JSON) applies
+named `instrument_id` simple-return shocks to the current book and writes
+`stress_scenario_catalog.json`, `stress_test_results.csv`, and
+`stress_contributions.csv`. Scenarios carry no probability.
+
 ## Example results
 
 These figures use 1,004 complete-case daily log returns for `SPY`, `QQQ`,

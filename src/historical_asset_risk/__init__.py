@@ -19,6 +19,7 @@ from historical_asset_risk.portfolio_risk import (
     simple_return_correlation,
     simple_return_summary,
 )
+from historical_asset_risk.stress import apply_stress, load_stress_catalog
 from historical_asset_risk.tail_risk import (
     historical_es,
     historical_var,
@@ -29,11 +30,13 @@ from historical_asset_risk.tail_risk import (
 __all__ = [
     "__version__",
     "align_portfolio_simple_returns",
+    "apply_stress",
     "compound_simple_returns",
     "historical_es",
     "historical_var",
     "hypothetical_pnl",
     "load_artifact",
+    "load_stress_catalog",
     "map_provider_tickers_to_instrument_ids",
     "normal_es",
     "normal_var",

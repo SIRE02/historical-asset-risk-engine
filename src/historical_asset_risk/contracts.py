@@ -90,6 +90,20 @@ PROXY_REALIZED_PNL_COLUMNS: tuple[str, ...] = (
     "calculation_version",
     "schema_version",
 )
+# --- Phase 5: tail risk and stress -------------------------------------------
+PHASE5_SCHEMA_VERSION = "1.experimental"
+PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID = "historical-asset-risk/portfolio-value-at-risk"
+PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-expected-shortfall"
+)
+EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID = (
+    "historical-asset-risk/expected-shortfall-tail-weights"
+)
+TAIL_RISK_COMPARISON_SCHEMA_ID = "historical-asset-risk/tail-risk-comparison"
+TRAILING_TAIL_RISK_SCHEMA_ID = "historical-asset-risk/trailing-portfolio-tail-risk"
+STRESS_TEST_RESULTS_SCHEMA_ID = "historical-asset-risk/stress-test-results"
+STRESS_CONTRIBUTIONS_SCHEMA_ID = "historical-asset-risk/stress-contributions"
+
 RISK_REALIZATIONS_COLUMNS: tuple[str, ...] = (
     "portfolio_id",
     "exposure_snapshot_id",
@@ -307,8 +321,16 @@ __all__ = [
     "HYPOTHETICAL_PNL_COLUMNS",
     "HYPOTHETICAL_PNL_SCHEMA_ID",
     "PHASE4_SCHEMA_VERSION",
+    "EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID",
+    "PHASE5_SCHEMA_VERSION",
+    "PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID",
+    "PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID",
     "PROXY_REALIZED_PNL_COLUMNS",
     "RISK_REALIZATIONS_COLUMNS",
+    "STRESS_CONTRIBUTIONS_SCHEMA_ID",
+    "STRESS_TEST_RESULTS_SCHEMA_ID",
+    "TAIL_RISK_COMPARISON_SCHEMA_ID",
+    "TRAILING_TAIL_RISK_SCHEMA_ID",
     "PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID",
     "PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID",
     "PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID",
