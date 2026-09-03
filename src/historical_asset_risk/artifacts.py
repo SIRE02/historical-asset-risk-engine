@@ -13,6 +13,7 @@ from typing import Any
 import pandas as pd
 
 from historical_asset_risk.contracts import (
+    HYPOTHETICAL_PNL_COLUMNS,
     HYPOTHETICAL_PNL_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_VERSION,
@@ -25,7 +26,9 @@ from historical_asset_risk.contracts import (
     PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
     PORTFOLIO_VALUATION_SCHEMA_ID,
     PORTFOLIO_VALUATION_SCHEMA_VERSION,
+    PROXY_REALIZED_PNL_COLUMNS,
     PROXY_REALIZED_PNL_SCHEMA_ID,
+    RISK_REALIZATIONS_COLUMNS,
     RISK_REALIZATIONS_SCHEMA_ID,
     SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
     SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
@@ -277,6 +280,11 @@ _STRICT_OUTPUT_COLUMNS = {
     "validated_positions.csv": _VALIDATED_POSITION_OUTPUT_COLUMNS,
     "portfolio_valuation.csv": _PORTFOLIO_VALUATION_OUTPUT_COLUMNS,
     "portfolio_exposure_summary.csv": _PORTFOLIO_EXPOSURE_OUTPUT_COLUMNS,
+    # Frozen Phase 4 portfolio-loss and realization contract (Phase 5 depends
+    # on these; the column set and order must not drift while Phase 5 lands).
+    "hypothetical_portfolio_pnl.csv": HYPOTHETICAL_PNL_COLUMNS,
+    "proxy_realized_portfolio_pnl.csv": PROXY_REALIZED_PNL_COLUMNS,
+    "risk_realizations.csv": RISK_REALIZATIONS_COLUMNS,
 }
 
 

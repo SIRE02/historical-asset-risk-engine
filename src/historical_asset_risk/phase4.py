@@ -16,14 +16,17 @@ from typing import Any
 import pandas as pd
 
 from historical_asset_risk.contracts import (
+    HYPOTHETICAL_PNL_COLUMNS,
     HYPOTHETICAL_PNL_SCHEMA_ID,
     PHASE4_SCHEMA_VERSION,
     PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
     PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
     PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
     PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
+    PROXY_REALIZED_PNL_COLUMNS,
     PROXY_REALIZED_PNL_SCHEMA_ID,
     RISK_REALIZATION_CALCULATION_VERSION,
+    RISK_REALIZATIONS_COLUMNS,
     RISK_REALIZATIONS_SCHEMA_ID,
     SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
     SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
@@ -148,7 +151,7 @@ def _proxy_realized_artifacts(
         loss_sign="loss_is_positive",
         calculation_version=RISK_REALIZATION_CALCULATION_VERSION,
         schema_version=PHASE4_SCHEMA_VERSION,
-    )
+    ).loc[:, list(PROXY_REALIZED_PNL_COLUMNS)]
     realizations_frame = pd.DataFrame(
         {
             "portfolio_id": proxy["portfolio_id"],
@@ -164,7 +167,7 @@ def _proxy_realized_artifacts(
             "calculation_version": RISK_REALIZATION_CALCULATION_VERSION,
             "schema_version": PHASE4_SCHEMA_VERSION,
         }
-    )
+    ).loc[:, list(RISK_REALIZATIONS_COLUMNS)]
 
     record_count = int(len(proxy))
     realized_count = int((proxy["outcome_status"] == "realized").sum())
@@ -269,18 +272,7 @@ def compute_phase4(
         schema_version=PHASE4_SCHEMA_VERSION,
         **identity,
     )
-    pnl_columns = [
-        *identity,
-        "period_start",
-        "period_end",
-        "return_type",
-        "hypothetical_pnl",
-        "hypothetical_loss",
-        "units",
-        "loss_sign",
-        "schema_version",
-    ]
-    pnl_frame = pnl_frame.loc[:, pnl_columns]
+    pnl_frame = pnl_frame.loc[:, list(HYPOTHETICAL_PNL_COLUMNS)]
 
     summary_frame = _index_frame(summary, "instrument_id").assign(
         cumulative_simple_return=lambda frame: frame["instrument_id"].map(

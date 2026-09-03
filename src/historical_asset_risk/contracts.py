@@ -48,6 +48,63 @@ PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID = (
     "historical-asset-risk/portfolio-concentration-summary"
 )
 
+# Frozen column contracts for the portfolio-loss and realization artifacts that
+# Phase 5 tail-risk and stress work builds on. The schema version stays
+# ``experimental`` (Phase 6 owns promotion), but the column set, order, units,
+# and loss sign of these three files must not change while Phase 5 is written.
+HYPOTHETICAL_PNL_COLUMNS: tuple[str, ...] = (
+    "portfolio_snapshot_id",
+    "exposure_snapshot_id",
+    "portfolio_id",
+    "as_of_date",
+    "as_of_timestamp",
+    "base_currency",
+    "market_calendar_id",
+    "data_snapshot_id",
+    "period_start",
+    "period_end",
+    "return_type",
+    "hypothetical_pnl",
+    "hypothetical_loss",
+    "units",
+    "loss_sign",
+    "schema_version",
+)
+PROXY_REALIZED_PNL_COLUMNS: tuple[str, ...] = (
+    "portfolio_snapshot_id",
+    "portfolio_id",
+    "exposure_snapshot_id",
+    "as_of_date",
+    "target_period_start",
+    "target_period_end",
+    "market_calendar_id",
+    "held_instrument_count",
+    "missing_instruments",
+    "proxy_realized_pnl",
+    "proxy_realized_loss",
+    "outcome_status",
+    "data_snapshot_id",
+    "return_type",
+    "units",
+    "loss_sign",
+    "calculation_version",
+    "schema_version",
+)
+RISK_REALIZATIONS_COLUMNS: tuple[str, ...] = (
+    "portfolio_id",
+    "exposure_snapshot_id",
+    "market_calendar_id",
+    "target_period_start",
+    "target_period_end",
+    "units",
+    "loss_sign",
+    "realized_loss",
+    "outcome_status",
+    "data_snapshot_id",
+    "calculation_version",
+    "schema_version",
+)
+
 
 class PortfolioError(ValueError):
     """Base class for readable portfolio-domain failures."""
@@ -247,8 +304,11 @@ class PortfolioValuation:
 
 __all__ = [
     "ArtifactSchemaError",
+    "HYPOTHETICAL_PNL_COLUMNS",
     "HYPOTHETICAL_PNL_SCHEMA_ID",
     "PHASE4_SCHEMA_VERSION",
+    "PROXY_REALIZED_PNL_COLUMNS",
+    "RISK_REALIZATIONS_COLUMNS",
     "PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID",
     "PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID",
     "PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID",
