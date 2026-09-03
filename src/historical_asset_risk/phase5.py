@@ -15,7 +15,14 @@ import numpy as np
 import pandas as pd
 
 from historical_asset_risk.contracts import (
+    EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS,
     PHASE5_SCHEMA_VERSION,
+    PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS,
+    PORTFOLIO_VALUE_AT_RISK_COLUMNS,
+    STRESS_CONTRIBUTIONS_COLUMNS,
+    STRESS_TEST_RESULTS_COLUMNS,
+    TAIL_RISK_COMPARISON_COLUMNS,
+    TRAILING_TAIL_RISK_COLUMNS,
     Instrument,
     PortfolioValuation,
 )
@@ -206,10 +213,18 @@ def compute_phase5(
         )
 
     frames: dict[str, pd.DataFrame] = {
-        "portfolio_value_at_risk.csv": pd.DataFrame(var_rows),
-        "portfolio_expected_shortfall.csv": pd.DataFrame(es_rows),
-        "portfolio_expected_shortfall_tail_weights.csv": pd.DataFrame(weight_rows),
-        "tail_risk_comparison.csv": pd.DataFrame(comparison_rows),
+        "portfolio_value_at_risk.csv": pd.DataFrame(
+            var_rows, columns=list(PORTFOLIO_VALUE_AT_RISK_COLUMNS)
+        ),
+        "portfolio_expected_shortfall.csv": pd.DataFrame(
+            es_rows, columns=list(PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS)
+        ),
+        "portfolio_expected_shortfall_tail_weights.csv": pd.DataFrame(
+            weight_rows, columns=list(EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS)
+        ),
+        "tail_risk_comparison.csv": pd.DataFrame(
+            comparison_rows, columns=list(TAIL_RISK_COMPARISON_COLUMNS)
+        ),
     }
 
     trailing = _trailing_tail_risk(
@@ -351,7 +366,7 @@ def _trailing_tail_risk(
             }
         )
     return {
-        "frame": pd.DataFrame(rows),
+        "frame": pd.DataFrame(rows, columns=list(TRAILING_TAIL_RISK_COLUMNS)),
         "record_count": len(rows),
         "manifest": {
             "status": "computed",
@@ -424,8 +439,12 @@ def _stress_artifacts(
         )
     return {
         "frames": {
-            "stress_test_results.csv": pd.DataFrame(result_rows),
-            "stress_contributions.csv": pd.DataFrame(contribution_rows),
+            "stress_test_results.csv": pd.DataFrame(
+                result_rows, columns=list(STRESS_TEST_RESULTS_COLUMNS)
+            ),
+            "stress_contributions.csv": pd.DataFrame(
+                contribution_rows, columns=list(STRESS_CONTRIBUTIONS_COLUMNS)
+            ),
         },
         "catalog_json": {
             "schema_id": STRESS_CATALOG_SCHEMA_ID,

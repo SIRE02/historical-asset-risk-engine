@@ -119,6 +119,110 @@ RISK_REALIZATIONS_COLUMNS: tuple[str, ...] = (
     "schema_version",
 )
 
+# Frozen column contracts for the Phase 5 tail-risk and stress artifacts. The
+# schema version stays experimental (Phase 6 owns promotion), but these column
+# sets, orders, and loss sign must not drift while Phase 6 lands.
+_TAIL_IDENTITY = (
+    "portfolio_snapshot_id",
+    "exposure_snapshot_id",
+    "portfolio_id",
+    "as_of_date",
+    "base_currency",
+    "data_snapshot_id",
+)
+PORTFOLIO_VALUE_AT_RISK_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "dimension",
+    "units",
+    "confidence_level",
+    "observation_count",
+    "value_at_risk",
+    "order_statistic_rank",
+    "quantile_method",
+    "tail_sample_warning",
+    "schema_version",
+)
+PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "dimension",
+    "units",
+    "confidence_level",
+    "observation_count",
+    "expected_shortfall",
+    "value_at_risk",
+    "nominal_tail_observations",
+    "full_tail_count",
+    "boundary_weight",
+    "contributing_observation_count",
+    "es_ge_var",
+    "tail_sample_warning",
+    "schema_version",
+)
+EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS: tuple[str, ...] = (
+    "exposure_snapshot_id",
+    "dimension",
+    "units",
+    "confidence_level",
+    "order_statistic_rank",
+    "loss",
+    "weight",
+    "schema_version",
+)
+TAIL_RISK_COMPARISON_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "dimension",
+    "units",
+    "confidence_level",
+    "observation_count",
+    "historical_var",
+    "historical_es",
+    "normal_var_mean_included",
+    "normal_es_mean_included",
+    "normal_var_zero_mean",
+    "normal_es_zero_mean",
+    "mean_loss",
+    "standard_deviation",
+    "z_alpha",
+    "schema_version",
+)
+TRAILING_TAIL_RISK_COLUMNS: tuple[str, ...] = (
+    "as_of_date",
+    "exposure_snapshot_id",
+    "window",
+    "window_observation_count",
+    "confidence_level",
+    "value_at_risk",
+    "expected_shortfall",
+    "es_ge_var",
+    "outcome_status",
+    "units",
+    "schema_version",
+)
+STRESS_TEST_RESULTS_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "scenario_id",
+    "scenario_version",
+    "name",
+    "kind",
+    "content_hash",
+    "scenario_pnl",
+    "scenario_loss",
+    "units",
+    "loss_sign",
+    "schema_version",
+)
+STRESS_CONTRIBUTIONS_COLUMNS: tuple[str, ...] = (
+    "exposure_snapshot_id",
+    "scenario_id",
+    "scenario_version",
+    "instrument_id",
+    "currency_exposure",
+    "simple_return_shock",
+    "scenario_pnl",
+    "scenario_loss",
+    "schema_version",
+)
+
 
 class PortfolioError(ValueError):
     """Base class for readable portfolio-domain failures."""
@@ -321,15 +425,22 @@ __all__ = [
     "HYPOTHETICAL_PNL_COLUMNS",
     "HYPOTHETICAL_PNL_SCHEMA_ID",
     "PHASE4_SCHEMA_VERSION",
+    "EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS",
     "EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID",
     "PHASE5_SCHEMA_VERSION",
+    "PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS",
     "PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID",
+    "PORTFOLIO_VALUE_AT_RISK_COLUMNS",
     "PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID",
     "PROXY_REALIZED_PNL_COLUMNS",
     "RISK_REALIZATIONS_COLUMNS",
+    "STRESS_CONTRIBUTIONS_COLUMNS",
     "STRESS_CONTRIBUTIONS_SCHEMA_ID",
+    "STRESS_TEST_RESULTS_COLUMNS",
     "STRESS_TEST_RESULTS_SCHEMA_ID",
+    "TAIL_RISK_COMPARISON_COLUMNS",
     "TAIL_RISK_COMPARISON_SCHEMA_ID",
+    "TRAILING_TAIL_RISK_COLUMNS",
     "TRAILING_TAIL_RISK_SCHEMA_ID",
     "PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID",
     "PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID",
