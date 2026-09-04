@@ -1,8 +1,15 @@
 # Runnable examples
 
-Every file here is synthetic. The two portfolio configurations run offline
-(`provider = "csv"`) against the tiny bundled price matrix, so they reproduce
-identically from the built wheel with no network access.
+Three configurations:
+
+- **`../config.example.toml`** (repo root) - a four-instrument long/short book
+  measured over a multi-year **live Yahoo** window. Needs network access; also
+  writes `acquired_adjusted_prices.csv` so the window replays offline afterward.
+- **`config.long_short.toml`** and **`config.long_only.toml`** - offline
+  (`provider = "csv"`) against the tiny bundled synthetic price matrix, so they
+  reproduce identically from the built wheel with no network access.
+
+All bundled data is synthetic; the Yahoo run fetches real prices.
 
 ## Install
 
@@ -20,11 +27,14 @@ python -m pip install dist/historical_asset_risk_engine-*.whl
 ## Run
 
 ```
-# Long/short book (long SPY, short QQQ) + Phase 5 tail risk and stress
+# Offline long/short book + Phase 5 tail risk and stress
 historical-asset-risk --config examples/config.long_short.toml
 
-# Long-only book
+# Offline long-only book
 historical-asset-risk --config examples/config.long_only.toml
+
+# Realistic multi-year run (needs network)
+historical-asset-risk --config config.example.toml
 ```
 
 Each run writes to its own `output_dir`: the frozen return artifacts, the
@@ -47,11 +57,12 @@ historical-asset-risk --provider csv \
 
 | File | Purpose |
 | --- | --- |
-| `data/adjusted_prices.csv` | Synthetic adjusted-close matrix (SPY, QQQ, TLT, GLD; 8 sessions) |
-| `data/instrument_registry.csv` | Canonical instrument metadata |
-| `data/positions.csv` / `data/cash.csv` | Long/short snapshot |
-| `data/positions_long_only.csv` / `data/cash_long_only.csv` | Long-only snapshot |
-| `stress_catalog.example.json` | Two hash-verified hypothetical scenarios |
+| `data/adjusted_prices.csv` | Synthetic adjusted-close matrix (SPY, QQQ, TLT, GLD; 8 sessions) for the offline runs |
+| `data/instrument_registry.csv` | Canonical metadata for the four instruments |
+| `data/positions.csv` / `data/cash.csv` | Offline long/short snapshot (SPY, QQQ) |
+| `data/positions_long_only.csv` / `data/cash_long_only.csv` | Offline long-only snapshot |
+| `data/positions_market.csv` / `data/cash_market.csv` | Four-instrument long/short book (long SPY + QQQ, short TLT, long GLD) for the Yahoo run |
+| `stress_catalog.example.json` | Three hash-verified scenarios (two hypothetical, one historical) covering all four instruments |
 | `config.long_short.toml` / `config.long_only.toml` | Offline end-to-end runs |
 
 See [`docs/methodology/`](../docs/methodology/README.md) for what each artifact

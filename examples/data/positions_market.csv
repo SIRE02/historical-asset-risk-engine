@@ -1,0 +1,5 @@
+portfolio_snapshot_id,portfolio_id,as_of_date,instrument_id,quantity,valuation_price,valuation_price_timestamp,valuation_price_source,source_row_id
+multi-asset-2024-12-31,portfolio-ma,2024-12-31,US_SPY,40,586.08,2024-12-31T16:00:00-05:00,synthetic official close,ma-row-1
+multi-asset-2024-12-31,portfolio-ma,2024-12-31,US_QQQ,25,511.23,2024-12-31T16:00:00-05:00,synthetic official close,ma-row-2
+multi-asset-2024-12-31,portfolio-ma,2024-12-31,US_TLT,-120,87.33,2024-12-31T16:00:00-05:00,synthetic official close,ma-row-3
+multi-asset-2024-12-31,portfolio-ma,2024-12-31,US_GLD,30,242.10,2024-12-31T16:00:00-05:00,synthetic official close,ma-row-4

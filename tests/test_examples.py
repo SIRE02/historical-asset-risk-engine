@@ -19,17 +19,20 @@ def test_committed_example_configuration_resolves_full_market_settings() -> None
 
     assert config.provider == "yahoo"
     assert config.tickers == ("SPY", "QQQ", "TLT", "GLD")
-    assert config.start_date == "2021-01-01"
+    assert config.start_date == "2018-01-01"
     assert config.end_date == "2025-01-01"
-    assert config.rolling_window == 21
-    assert config.rolling_min_observations == 21
+    assert config.rolling_window == 63
+    assert config.rolling_min_observations == 63
     assert config.portfolio_enabled is True
     assert config.csv_path is None
     assert config.instrument_registry_path == Path(
         "examples/data/instrument_registry.csv"
     )
-    assert config.positions_path == Path("examples/data/positions.csv")
-    assert config.cash_path == Path("examples/data/cash.csv")
+    assert config.positions_path == Path("examples/data/positions_market.csv")
+    assert config.cash_path == Path("examples/data/cash_market.csv")
+    assert config.tail_risk_confidence_level == 0.99
+    assert config.tail_risk_window == 252
+    assert config.stress_catalog_path == Path("examples/stress_catalog.example.json")
 
 
 @pytest.mark.parametrize(
@@ -69,4 +72,4 @@ def test_offline_portfolio_examples_run_from_repo_root(
         "run_manifest.json",
     }.issubset(names)
     manifest = json.loads((tmp_path / "out" / "run_manifest.json").read_text())
-    assert manifest["portfolio_phase5"]["stress"]["scenario_count"] == 2
+    assert manifest["portfolio_phase5"]["stress"]["scenario_count"] == 3

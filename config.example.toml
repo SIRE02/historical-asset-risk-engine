@@ -1,17 +1,33 @@
+# Canonical example: a four-instrument long/short book measured over a
+# multi-year Yahoo window.
+#
+#   historical-asset-risk --config config.example.toml
+#
+# Needs network access. The run also writes acquired_adjusted_prices.csv, so the
+# same window can be replayed offline afterwards with
+#   provider = "csv"
+#   csv_path = "outputs/example/acquired_adjusted_prices.csv"
 [analysis]
 provider = "yahoo"
 tickers = ["SPY", "QQQ", "TLT", "GLD"]
-start_date = "2021-01-01"
+start_date = "2018-01-01"
 end_date = "2025-01-01"
-rolling_window = 21
-rolling_min_observations = 21
+rolling_window = 63          # roughly one quarter
+rolling_min_observations = 63
 observations_per_year = 252
-quantiles = [0.05, 0.25, 0.75, 0.95]
+quantiles = [0.01, 0.05, 0.95, 0.99]
 quantile_method = "linear"
 downside_target = 0.0
+
 output_dir = "outputs/example"
 
-# Portfolio valuation is enabled because all three paths are supplied.
+# Long SPY + QQQ, short TLT as a duration hedge, long GLD as a diversifier.
 instrument_registry_path = "examples/data/instrument_registry.csv"
-positions_path = "examples/data/positions.csv"
-cash_path = "examples/data/cash.csv"
+positions_path = "examples/data/positions_market.csv"
+cash_path = "examples/data/cash_market.csv"
+
+# Phase 5: 99% one-day tail risk, a trailing window of ~one year, and a
+# three-scenario stress catalog covering all four instruments.
+tail_risk_confidence_level = 0.99
+tail_risk_window = 252
+stress_catalog_path = "examples/stress_catalog.example.json"

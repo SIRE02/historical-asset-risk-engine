@@ -3,44 +3,88 @@
   "schema_version": "1.experimental",
   "scenarios": [
     {
-      "scenario_id": "broad-equity-drawdown",
+      "scenario_id": "broad-risk-off",
       "scenario_version": "1",
-      "name": "Broad equity drawdown",
+      "name": "Broad risk-off, flight to quality",
       "kind": "hypothetical",
-      "description": "A synchronized one-week sell-off across US equity ETFs.",
+      "description": "Equities sell off hard; long Treasuries and gold catch a bid.",
       "session_start": null,
       "session_end": null,
       "shocks": [
         {
+          "instrument_id": "US_GLD",
+          "simple_return_shock": 0.03
+        },
+        {
           "instrument_id": "US_QQQ",
-          "simple_return_shock": -0.14
+          "simple_return_shock": -0.16
         },
         {
           "instrument_id": "US_SPY",
-          "simple_return_shock": -0.1
+          "simple_return_shock": -0.12
+        },
+        {
+          "instrument_id": "US_TLT",
+          "simple_return_shock": 0.05
         }
       ],
-      "content_hash": "sha256:7a653e9bbca62ac196610d8ff9aab55bcf2d9d949f08f8e15540e1d669357b52"
+      "content_hash": "sha256:119da485933a5c6fe7213809bcc031aed4f2f7ac7f4ae5200473f07cc89e27e6"
     },
     {
-      "scenario_id": "growth-selloff-value-bid",
+      "scenario_id": "rates-shock",
       "scenario_version": "1",
-      "name": "Growth sell-off, value bid",
+      "name": "Disorderly rate rise",
       "kind": "hypothetical",
-      "description": "Long-duration growth names fall while broad market is flat.",
+      "description": "Yields spike; duration and growth are hit, gold soft.",
       "session_start": null,
       "session_end": null,
       "shocks": [
         {
+          "instrument_id": "US_GLD",
+          "simple_return_shock": -0.02
+        },
+        {
           "instrument_id": "US_QQQ",
-          "simple_return_shock": -0.09
+          "simple_return_shock": -0.07
         },
         {
           "instrument_id": "US_SPY",
-          "simple_return_shock": -0.01
+          "simple_return_shock": -0.04
+        },
+        {
+          "instrument_id": "US_TLT",
+          "simple_return_shock": -0.11
         }
       ],
-      "content_hash": "sha256:af3914d23a76837a5cc14f3619b7bbf8dd61d47495837fa43930de85d9f87e86"
+      "content_hash": "sha256:ba82e132163848e5ec160934fcc6fffdebd40ca5b2826175ac9d52f1c22faeae"
+    },
+    {
+      "scenario_id": "gfc-2008-worst-week",
+      "scenario_version": "1",
+      "name": "2008-style crash week",
+      "kind": "historical",
+      "description": "Magnitudes approximating the worst week of October 2008.",
+      "session_start": "2008-10-06",
+      "session_end": "2008-10-10",
+      "shocks": [
+        {
+          "instrument_id": "US_GLD",
+          "simple_return_shock": -0.03
+        },
+        {
+          "instrument_id": "US_QQQ",
+          "simple_return_shock": -0.22
+        },
+        {
+          "instrument_id": "US_SPY",
+          "simple_return_shock": -0.2
+        },
+        {
+          "instrument_id": "US_TLT",
+          "simple_return_shock": 0.06
+        }
+      ],
+      "content_hash": "sha256:b0ac09d967cc58f364921cc338e622382c295d55a337d6e3b61d19ceecc66ad1"
     }
   ]
 }

@@ -59,11 +59,20 @@ Run the four-asset Yahoo Finance example:
 historical-asset-risk --config config.example.toml
 ```
 
-It analyzes `SPY`, `QQQ`, `TLT`, and `GLD` from 2021 through 2024 with a
-21-observation rolling window, values the bundled synthetic portfolio, and writes
-to `outputs/example/`. This run requires network access. `examples/data/` is safe
-to commit; the ignored root `data/` directory is reserved for private or licensed
-user data.
+It analyzes `SPY`, `QQQ`, `TLT`, and `GLD` from 2018 through 2024 with a
+63-session rolling window, values a four-instrument long/short book (long SPY and
+QQQ, short TLT, long GLD), runs 99% one-day VaR/ES plus a three-scenario stress
+catalog, and writes to `outputs/example/`. This run requires network access.
+`examples/data/` is safe to commit; the ignored root `data/` directory is
+reserved for private or licensed user data.
+
+For an offline end-to-end run with no network, use the bundled synthetic
+examples instead:
+
+```powershell
+historical-asset-risk --config examples/config.long_short.toml
+historical-asset-risk --config examples/config.long_only.toml
+```
 
 Run a Yahoo Finance analysis:
 
