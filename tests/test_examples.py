@@ -19,7 +19,7 @@ def test_committed_example_configuration_resolves_full_market_settings() -> None
 
     assert config.provider == "yahoo"
     assert config.tickers == ("SPY", "QQQ", "TLT", "GLD")
-    assert config.start_date == "2018-01-01"
+    assert config.start_date == "2001-01-01"
     assert config.end_date == "2025-01-01"
     assert config.rolling_window == 63
     assert config.rolling_min_observations == 63

@@ -3,27 +3,39 @@
 A Python CLI and reusable package for reproducible historical market-risk
 analysis. It validates adjusted daily prices for two or more assets, calculates
 returns and risk statistics, and writes tables, charts, quality evidence, and
-source lineage. It can also value a portfolio from explicit instrument, position,
-and cash records.
+source lineage. Given an explicit instrument, position, and cash book it also
+values the portfolio and measures its risk: hypothetical and proxy realized
+P&L, simple-return covariance with Euler contributions, historical and normal
+Value at Risk / Expected Shortfall, and named stress scenarios.
 
-Results describe a historical sample. They are not forecasts or investment advice.
+Results describe a historical sample. They are not forecasts or investment
+advice. The engine does not forecast, optimize, trade, or run risk-model
+coverage tests.
 
 ## Capabilities
 
 - Yahoo Finance and local CSV market-data providers
-- Simple and logarithmic returns
-- Distribution summaries and daily/annualized volatility
-- Multi-asset covariance and Pearson correlation
-- Trailing volatility, covariance, and correlation
-- Data-quality reports and reproducible run manifests
+- Simple and logarithmic returns; distribution summaries; daily and annualized
+  volatility
+- Multi-asset covariance and Pearson correlation, plus trailing versions
 - Optional portfolio valuation, weights, and exposure measures
+- Portfolio P&L: hypothetical historical simulation and proxy realized P&L with
+  a versioned realization identity
+- Simple-return covariance risk with Euler marginal, component, and percentage
+  contributions
+- Historical and normal-parametric VaR and Expected Shortfall in return and
+  currency terms, with an optional trailing book series
+- Named historical or hypothetical stress scenarios, hash-verified and carrying
+  no probability
+- Data-quality reports and reproducible run manifests
 - CLI and importable Python APIs
 
 ```text
-adjusted prices -> validation and alignment -> returns -> risk estimates
-                                                         |
-                                                         v
-                             tables, charts, quality report, manifest
+adjusted prices -> validation and alignment -> returns -> descriptive risk estimates
+optional book   -> valuation -> P&L -> simple-return covariance -> VaR / ES / stress
+                                             |
+                                             v
+                         tables, charts, quality report, manifest
 ```
 
 Adjusted prices prevent splits and cash distributions from appearing as ordinary
@@ -59,10 +71,12 @@ Run the four-asset Yahoo Finance example:
 historical-asset-risk --config config.example.toml
 ```
 
-It analyzes `SPY`, `QQQ`, `TLT`, and `GLD` from 2018 through 2024 with a
-63-session rolling window, values a four-instrument long/short book (long SPY and
-QQQ, short TLT, long GLD), runs 99% one-day VaR/ES plus a three-scenario stress
-catalog, and writes to `outputs/example/`. This run requires network access.
+It analyzes `SPY`, `QQQ`, `TLT`, and `GLD` over their full common history
+(complete-case alignment starts at `GLD`'s November 2004 inception) through
+2024, with a 63-session rolling window. It values a four-instrument long/short
+book (long SPY and QQQ, short TLT, long GLD), runs 99% one-day VaR/ES plus a
+three-scenario stress catalog, and writes to `outputs/example/`. This run
+requires network access.
 `examples/data/` is safe to commit; the ignored root `data/` directory is
 reserved for private or licensed user data.
 
@@ -92,18 +106,36 @@ top-level object or an `analysis` object.
 
 ```toml
 [analysis]
-provider = "yahoo"
+provider = "yahoo"                     # or "csv" with csv_path
 tickers = ["SPY", "QQQ", "TLT", "GLD"]
 start_date = "2021-01-01"
-end_date = "2025-01-01"
+end_date = "2025-01-01"                # exclusive
 rolling_window = 21
-rolling_min_observations = 21
+rolling_min_observations = 21          # defaults to rolling_window
 observations_per_year = 252
 quantiles = [0.05, 0.25, 0.75, 0.95]
 quantile_method = "linear"
 downside_target = 0.0
 output_dir = "outputs"
+
+# Optional portfolio book. Supplying all three enables Phase 3 valuation,
+# Phase 4 P&L and covariance risk, and Phase 5 tail risk.
+# instrument_registry_path = "examples/data/instrument_registry.csv"
+# positions_path = "examples/data/positions.csv"
+# cash_path = "examples/data/cash.csv"
+
+# Optional ordered snapshot history -> proxy realized P&L, realization records,
+# and a trailing tail-risk series.
+# positions_history_path = "..."
+# cash_history_path = "..."
+
+# Phase 5 knobs.
+# tail_risk_confidence_level = 0.95    # 0.5 < alpha < 1
+# tail_risk_window = 252               # trailing window; omit for the full sample
+# stress_catalog_path = "examples/stress_catalog.example.json"
 ```
+
+`config.example.toml` is a complete portfolio-plus-tail-risk configuration.
 
 ```powershell
 historical-asset-risk --config analysis.toml
@@ -230,13 +262,13 @@ named `instrument_id` simple-return shocks to the current book and writes
 
 ## Example results
 
-These figures use 1,004 complete-case daily log returns for `SPY`, `QQQ`,
-`TLT`, and `GLD` from Yahoo Finance adjusted closes, covering January 5, 2021,
-through December 31, 2024. The volatility estimate uses a trailing window of 21
-trading observations, sample standard deviation (`ddof=1`), and square-root-of-
-time annualization with 252 observations per year. The correlation heatmap shows
-full-sample Pearson correlations. Results are historical descriptions, not
-forecasts.
+These illustrative figures are from an earlier `SPY` / `QQQ` / `TLT` / `GLD`
+run: 1,004 complete-case daily log returns covering January 5, 2021 through
+December 31, 2024, a 21-session trailing window, sample standard deviation
+(`ddof=1`), and square-root-of-time annualization with 252 observations per
+year. `config.example.toml` now uses a longer window; every run writes its own
+`rolling_volatility.png` and `correlation_heatmap.png` for current numbers.
+Results are historical descriptions, not forecasts.
 
 ![Rolling annualized volatility for SPY, QQQ, TLT, and GLD](assets/readme/rolling_volatility.png)
 
@@ -244,7 +276,10 @@ forecasts.
 
 ## Statistical conventions
 
-Statistical estimators use daily log returns. Simple returns are a separate output.
+The descriptive estimators below use daily log returns. Portfolio P&L,
+simple-return covariance, and tail risk use daily simple returns because
+currency P&L aggregates linearly as `exposure * simple_return`; those
+conventions are documented under [`docs/methodology/`](docs/methodology/README.md).
 
 | Metric | Convention |
 | --- | --- |
@@ -457,7 +492,9 @@ scope filters.
 - Dependency versions
 - Generated artifacts with schema identities, versions, and units
 - Estimation and missing-data conventions
-- Portfolio sources, calendar, reconciliation, and snapshot identity when enabled
+- Portfolio sources, calendar, reconciliation, and snapshot identity when
+  enabled, plus `portfolio_phase4` and `portfolio_phase5` sections recording the
+  P&L, covariance, tail-risk, and stress conventions
 
 CSV runs also record the resolved source path and file modification time. These
 reports describe the data actually analyzed, not only what was requested.

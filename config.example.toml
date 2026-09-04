@@ -10,7 +10,10 @@
 [analysis]
 provider = "yahoo"
 tickers = ["SPY", "QQQ", "TLT", "GLD"]
-start_date = "2018-01-01"
+# start_date is the request bound. Complete-case alignment across all four
+# tickers can only begin once the newest one has data, so the aligned window
+# actually starts at GLD's November 2004 inception (see run_manifest.json).
+start_date = "2001-01-01"
 end_date = "2025-01-01"
 rolling_window = 63          # roughly one quarter
 rolling_min_observations = 63
