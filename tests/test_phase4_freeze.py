@@ -149,8 +149,22 @@ def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             "date": list(dates) * 2,
             "ticker": ["SPY"] * len(dates) + ["QQQ"] * len(dates),
             "adjusted_close": [
-                100, 101, 102, 101, 103, 104, 105, 106,
-                50, 51, 50, 52, 53, 52, 54, 55,
+                100,
+                101,
+                102,
+                101,
+                103,
+                104,
+                105,
+                106,
+                50,
+                51,
+                50,
+                52,
+                53,
+                52,
+                54,
+                55,
             ],
         }
     ).to_csv(tmp_path / "prices.csv", index=False)
@@ -163,11 +177,13 @@ def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     }.items():
         (tmp_path / name).write_text(body, encoding="utf-8")
     monkeypatch.setattr(
-        cli, "plot_rolling_volatility",
+        cli,
+        "plot_rolling_volatility",
         lambda _d, path, _w: path.write_bytes(b"chart"),
     )
     monkeypatch.setattr(
-        cli, "plot_correlation_heatmap",
+        cli,
+        "plot_correlation_heatmap",
         lambda _d, path: path.write_bytes(b"chart"),
     )
     output_dir = tmp_path / "out"

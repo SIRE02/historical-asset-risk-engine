@@ -167,9 +167,7 @@ def historical_es(
 
     contributions: list[TailContribution] = []
     for rank in range(n - k + 1, n + 1):
-        contributions.append(
-            TailContribution(rank, float(ordered[rank - 1]), 1.0 / m)
-        )
+        contributions.append(TailContribution(rank, float(ordered[rank - 1]), 1.0 / m))
     if delta > 0.0:
         boundary_rank = n - k
         contributions.append(

@@ -100,8 +100,22 @@ def _config(
             "date": list(dates) * 2,
             "ticker": ["SPY"] * len(dates) + ["QQQ"] * len(dates),
             "adjusted_close": [
-                100, 101, 102, 101, 103, 104, 105, 106,
-                50, 51, 50, 52, 53, 52, 54, 55,
+                100,
+                101,
+                102,
+                101,
+                103,
+                104,
+                105,
+                106,
+                50,
+                51,
+                50,
+                52,
+                53,
+                52,
+                54,
+                55,
             ],
         }
     ).to_csv(tmp_path / "prices.csv", index=False)
@@ -140,11 +154,13 @@ def _config(
 @pytest.fixture(autouse=True)
 def _stub_charts(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        cli, "plot_rolling_volatility",
+        cli,
+        "plot_rolling_volatility",
         lambda _d, path, _w: path.write_bytes(b"chart"),
     )
     monkeypatch.setattr(
-        cli, "plot_correlation_heatmap",
+        cli,
+        "plot_correlation_heatmap",
         lambda _d, path: path.write_bytes(b"chart"),
     )
 
@@ -196,9 +212,7 @@ def test_descriptive_quantile_method_does_not_change_canonical_var(
 ) -> None:
     lower = tmp_path / "lower"
     higher = tmp_path / "higher"
-    cli.run_analysis(
-        _config(tmp_path, lower, portfolio=True, quantile_method="lower")
-    )
+    cli.run_analysis(_config(tmp_path, lower, portfolio=True, quantile_method="lower"))
     cli.run_analysis(
         _config(tmp_path, higher, portfolio=True, quantile_method="higher")
     )
@@ -227,8 +241,14 @@ def test_returns_only_run_writes_no_phase5_files(tmp_path: Path) -> None:
     cli.run_analysis(_config(tmp_path, output_dir, portfolio=False))
     names = {p.name for p in output_dir.iterdir()}
     assert not any(
-        n.startswith(("portfolio_value_at_risk", "portfolio_expected_shortfall",
-                      "tail_risk_comparison", "stress_"))
+        n.startswith(
+            (
+                "portfolio_value_at_risk",
+                "portfolio_expected_shortfall",
+                "tail_risk_comparison",
+                "stress_",
+            )
+        )
         for n in names
     )
     manifest = json.loads((output_dir / "run_manifest.json").read_text())

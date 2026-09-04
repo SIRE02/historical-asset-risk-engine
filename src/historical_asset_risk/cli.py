@@ -248,9 +248,7 @@ def run_analysis(
     config = config or load_configuration()
     loaded_portfolio = _load_and_value_portfolio(config)
     portfolio = loaded_portfolio[0] if loaded_portfolio is not None else None
-    registry_instruments = (
-        loaded_portfolio[1] if loaded_portfolio is not None else ()
-    )
+    registry_instruments = loaded_portfolio[1] if loaded_portfolio is not None else ()
     exposure_history = (
         _load_exposure_history(config, registry_instruments)
         if loaded_portfolio is not None

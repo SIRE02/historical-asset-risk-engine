@@ -57,9 +57,7 @@ def test_simple_return_summary_and_compounding() -> None:
 
     compounded = compound_simple_returns(RETURNS)
     assert compounded.loc["US_A"] == pytest.approx(1.1 * 0.9 * 1.2 - 1.0)
-    windowed = compound_simple_returns(
-        RETURNS, start="2024-01-04", end="2024-01-05"
-    )
+    windowed = compound_simple_returns(RETURNS, start="2024-01-04", end="2024-01-05")
     assert windowed.loc["US_A"] == pytest.approx(0.9 * 1.2 - 1.0)
 
 
@@ -142,7 +140,9 @@ def test_reordering_instruments_leaves_risk_unchanged() -> None:
 def test_risk_alignment_failures_are_specific() -> None:
     with pytest.raises(PortfolioReturnAlignmentError, match="missing entries"):
         portfolio_risk_from_covariance(
-            {"US_A": 1.0}, {"US_A": 1.0, "US_B": 1.0}, _cov(0.04, 0.0, 0.09),
+            {"US_A": 1.0},
+            {"US_A": 1.0, "US_B": 1.0},
+            _cov(0.04, 0.0, 0.09),
             observations_per_year=252,
         )
     with pytest.raises(

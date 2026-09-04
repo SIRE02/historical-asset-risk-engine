@@ -177,9 +177,7 @@ class AnalysisConfig:
             self.tail_risk_confidence_level, "TAIL_RISK_CONFIDENCE_LEVEL"
         )
         if not 0.5 < confidence < 1.0:
-            raise ValueError(
-                "TAIL_RISK_CONFIDENCE_LEVEL must satisfy 0.5 < alpha < 1."
-            )
+            raise ValueError("TAIL_RISK_CONFIDENCE_LEVEL must satisfy 0.5 < alpha < 1.")
         window = self.tail_risk_window
         if window is not None:
             validate_positive_integer(window, "TAIL_RISK_WINDOW")
@@ -258,9 +256,7 @@ class AnalysisConfig:
             else None
         )
         values["cash_history_path"] = (
-            str(self.cash_history_path)
-            if self.cash_history_path is not None
-            else None
+            str(self.cash_history_path) if self.cash_history_path is not None else None
         )
         values["stress_catalog_path"] = (
             str(self.stress_catalog_path)

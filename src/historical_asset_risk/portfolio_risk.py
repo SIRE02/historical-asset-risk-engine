@@ -133,8 +133,7 @@ def compound_simple_returns(
         selected = selected.loc[selected.index <= pd.Timestamp(end)]
     if selected.empty:
         raise PortfolioCovarianceError(
-            "No aligned simple-return observations fall in the requested session "
-            "range."
+            "No aligned simple-return observations fall in the requested session range."
         )
     values = selected.to_numpy(dtype=float)
     if not np.isfinite(values).all():
@@ -170,9 +169,7 @@ def covariance_condition_report(
             f"covariance matrix is ill-conditioned (condition number "
             f"{condition_number:.3e})"
         )
-    return CovarianceConditionReport(
-        condition_number=condition_number, warning=warning
-    )
+    return CovarianceConditionReport(condition_number=condition_number, warning=warning)
 
 
 @dataclass(frozen=True)
@@ -231,8 +228,7 @@ def portfolio_risk_from_covariance(
     instrument_ids = [str(column) for column in covariance.columns]
     if list(covariance.index.astype(str)) != instrument_ids:
         raise PortfolioReturnAlignmentError(
-            "The covariance matrix must be square and identically ordered on both "
-            "axes."
+            "The covariance matrix must be square and identically ordered on both axes."
         )
     sigma = covariance.to_numpy(dtype=float)
     if not np.isfinite(sigma).all():

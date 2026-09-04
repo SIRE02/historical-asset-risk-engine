@@ -156,9 +156,9 @@ class AlignedPortfolioReturns:
                 rows.append(
                     {
                         "instrument_id": instrument_id,
-                        "period_start": pd.Timestamp(
-                            self.period_start.loc[period_end]
-                        ).date().isoformat(),
+                        "period_start": pd.Timestamp(self.period_start.loc[period_end])
+                        .date()
+                        .isoformat(),
                         "period_end": pd.Timestamp(period_end).date().isoformat(),
                         "market_calendar_id": self.market_calendar_id,
                         "return_type": self.return_type,
@@ -225,9 +225,10 @@ def align_portfolio_simple_returns(
     }
     matrix = pd.DataFrame(columns, index=end_index, columns=ordered_ids)
     matrix.index.name = "period_end"
-    if matrix.size == 0 or not matrix.apply(
-        lambda column: column.map(math.isfinite)
-    ).to_numpy().all():
+    if (
+        matrix.size == 0
+        or not matrix.apply(lambda column: column.map(math.isfinite)).to_numpy().all()
+    ):
         raise PortfolioReturnAlignmentError(
             "Aligned simple returns contain missing or non-finite values."
         )

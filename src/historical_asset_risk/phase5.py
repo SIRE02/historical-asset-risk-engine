@@ -108,8 +108,7 @@ def compute_phase5(
         for instrument_id in aligned.matrix.columns
     ]
     currency_exposures_by_id = {
-        item.position.instrument_id: item.position_value
-        for item in valuation.positions
+        item.position.instrument_id: item.position_value for item in valuation.positions
     }
     currency_vector = [
         currency_exposures_by_id[instrument_id]
@@ -258,9 +257,9 @@ def compute_phase5(
             "static bounded-sample measurement; no coverage tests, research "
             "splits, or forecast records"
         ),
-        "trailing": trailing["manifest"] if trailing is not None else {
-            "status": "not_supplied"
-        },
+        "trailing": trailing["manifest"]
+        if trailing is not None
+        else {"status": "not_supplied"},
         "stress": stress["manifest"],
     }
     quality_section = {

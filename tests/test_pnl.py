@@ -146,9 +146,7 @@ def test_hypothetical_pnl_missing_or_extra_exposure_fails() -> None:
     ):
         hypothetical_pnl({"US_SPY": 1000.0}, aligned)
     with pytest.raises(PortfolioReturnAlignmentError, match="absent from the aligned"):
-        hypothetical_pnl(
-            {"US_SPY": 1.0, "US_QQQ": 1.0, "US_TLT": 1.0}, aligned
-        )
+        hypothetical_pnl({"US_SPY": 1.0, "US_QQQ": 1.0, "US_TLT": 1.0}, aligned)
 
 
 def test_cash_only_book_produces_zero_market_pnl() -> None:
@@ -165,9 +163,7 @@ def test_cash_only_book_produces_zero_market_pnl() -> None:
     assert result["hypothetical_loss"].tolist() == [0.0, 0.0]
 
 
-def _proxy_snapshot(
-    as_of: str, exposures: dict[str, float]
-) -> ProxyExposureSnapshot:
+def _proxy_snapshot(as_of: str, exposures: dict[str, float]) -> ProxyExposureSnapshot:
     return ProxyExposureSnapshot(
         portfolio_snapshot_id=f"snap-{as_of}",
         portfolio_id="portfolio-1",

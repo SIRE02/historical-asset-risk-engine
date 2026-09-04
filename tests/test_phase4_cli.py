@@ -44,8 +44,22 @@ def _prices(tmp_path: Path) -> Path:
             "date": list(dates) * 2,
             "ticker": ["SPY"] * len(dates) + ["QQQ"] * len(dates),
             "adjusted_close": [
-                100, 101, 102, 101, 103, 104, 105, 106,
-                50, 51, 50, 52, 53, 52, 54, 55,
+                100,
+                101,
+                102,
+                101,
+                103,
+                104,
+                105,
+                106,
+                50,
+                51,
+                50,
+                52,
+                53,
+                52,
+                54,
+                55,
             ],
         }
     )
@@ -113,11 +127,13 @@ def _base_config(
 @pytest.fixture(autouse=True)
 def _stub_charts(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        cli, "plot_rolling_volatility",
+        cli,
+        "plot_rolling_volatility",
         lambda _data, path, _window: path.write_bytes(b"chart"),
     )
     monkeypatch.setattr(
-        cli, "plot_correlation_heatmap",
+        cli,
+        "plot_correlation_heatmap",
         lambda _data, path: path.write_bytes(b"chart"),
     )
 
@@ -192,9 +208,7 @@ def test_phase4_book_run_emits_reconciled_pnl_and_risk(tmp_path: Path) -> None:
 
 def test_proxy_realized_history_emits_realization_identity(tmp_path: Path) -> None:
     output_dir = tmp_path / "with_history"
-    cli.run_analysis(
-        _base_config(tmp_path, output_dir, portfolio=True, history=True)
-    )
+    cli.run_analysis(_base_config(tmp_path, output_dir, portfolio=True, history=True))
 
     names = {path.name for path in output_dir.iterdir()}
     assert {"proxy_realized_portfolio_pnl.csv", "risk_realizations.csv"}.issubset(names)
@@ -247,9 +261,9 @@ def test_frozen_consumer_return_artifacts_are_unchanged_by_phase4(
         assert (with_book / name).read_text() == (without_book / name).read_text()
 
     for report in (with_book, without_book):
-        schemas = json.loads(
-            (report / "run_manifest.json").read_text()
-        )["artifact_schemas"]
+        schemas = json.loads((report / "run_manifest.json").read_text())[
+            "artifact_schemas"
+        ]
         assert schemas["simple_returns.csv"]["units"] == (
             "decimal_return_per_observation"
         )

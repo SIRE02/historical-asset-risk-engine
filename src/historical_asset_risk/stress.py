@@ -133,8 +133,7 @@ def _parse_shocks(raw: Any, scenario_id: str) -> tuple[InstrumentShock, ...]:
             ) from exc
         if not math.isfinite(shock_value):
             raise StressScenarioError(
-                f"Scenario {scenario_id!r} shock for {instrument_id!r} is not "
-                "finite."
+                f"Scenario {scenario_id!r} shock for {instrument_id!r} is not finite."
             )
         shocks.append(InstrumentShock(instrument_id, shock_value))
     return tuple(shocks)
@@ -156,8 +155,7 @@ def load_stress_catalog(path: Path) -> tuple[StressScenario, ...]:
         )
     if document.get("schema_version") != STRESS_SCENARIO_SCHEMA_VERSION:
         raise StressScenarioError(
-            f"Stress catalog schema_version must be "
-            f"{STRESS_SCENARIO_SCHEMA_VERSION!r}."
+            f"Stress catalog schema_version must be {STRESS_SCENARIO_SCHEMA_VERSION!r}."
         )
     raw_scenarios = document.get("scenarios")
     if not isinstance(raw_scenarios, list) or not raw_scenarios:
@@ -184,8 +182,7 @@ def load_stress_catalog(path: Path) -> tuple[StressScenario, ...]:
         kind = str(raw.get("kind", "")).strip().lower()
         if kind not in _SCENARIO_KINDS:
             raise StressScenarioError(
-                f"Scenario {scenario_id!r} kind must be 'historical' or "
-                "'hypothetical'."
+                f"Scenario {scenario_id!r} kind must be 'historical' or 'hypothetical'."
             )
         name = str(raw.get("name", "")).strip() or scenario_id
         description = str(raw.get("description", "")).strip()

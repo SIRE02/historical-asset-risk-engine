@@ -231,12 +231,9 @@ def compute_phase4(
         data_snapshot_id=data_snapshot_id,
     )
 
-    weights = {
-        item.position.instrument_id: item.weight for item in valuation.positions
-    }
+    weights = {item.position.instrument_id: item.weight for item in valuation.positions}
     currency_exposures = {
-        item.position.instrument_id: item.position_value
-        for item in valuation.positions
+        item.position.instrument_id: item.position_value for item in valuation.positions
     }
 
     pnl = hypothetical_pnl(currency_exposures, aligned)
