@@ -1,0 +1,24 @@
+# Offline long/short portfolio example. Runs from the built wheel with no
+# network access:
+#   historical-asset-risk --config examples/config.long_short.toml
+[analysis]
+provider = "csv"
+csv_path = "examples/data/adjusted_prices.csv"
+tickers = ["SPY", "QQQ"]
+start_date = "2024-01-01"
+end_date = "2024-02-01"
+rolling_window = 3
+observations_per_year = 252
+
+output_dir = "outputs/example-long-short"
+
+# Portfolio valuation, Phase 4 P&L, and Phase 5 tail risk are enabled because
+# the three portfolio paths are supplied. positions.csv holds a long SPY / short
+# QQQ book.
+instrument_registry_path = "examples/data/instrument_registry.csv"
+positions_path = "examples/data/positions.csv"
+cash_path = "examples/data/cash.csv"
+
+# Phase 5 knobs.
+tail_risk_confidence_level = 0.95
+stress_catalog_path = "examples/stress_catalog.example.json"

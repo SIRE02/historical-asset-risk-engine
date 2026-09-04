@@ -21,7 +21,9 @@ tmp/
 
 # Local input data is not published. Synthetic repository examples live elsewhere.
 /data/
-docs/
+# The roadmap and phase plans stay private; shipped methodology pages do not.
+/docs/*
+!/docs/methodology/
 
 # Local environment variables
 .env

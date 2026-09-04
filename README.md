@@ -336,14 +336,26 @@ For a shared experiment or downstream application, install an immutable commit:
 python -m pip install "historical-asset-risk-engine @ git+https://github.com/SIRE02/historical-asset-risk-engine.git@<commit>"
 ```
 
+Everything re-exported from the top-level `historical_asset_risk` namespace is
+the supported, versioned surface: the pure calculation functions from every
+phase, their result and contract dataclasses, the artifact schema registry
+(`ARTIFACT_SCHEMAS`, `ARTIFACT_UNITS`), `load_artifact`, `AnalysisConfig`, the
+CSV readers, and the market calendar. `historical_asset_risk.__all__` is the
+authoritative list. Run orchestration (`cli.run_analysis`, `compute_phase4`,
+`compute_phase5`), providers, and plotting are intentionally not part of that
+surface; import them from their submodules if you need them. Every estimator is
+documented under [`docs/methodology/`](docs/methodology/README.md).
+
 ### Calculate statistics in memory
 
 ```python
 import pandas as pd
 
-from historical_asset_risk.correlation import correlation_matrix
-from historical_asset_risk.returns import calculate_log_returns
-from historical_asset_risk.risk_metrics import volatility_summary
+from historical_asset_risk import (
+    calculate_log_returns,
+    correlation_matrix,
+    volatility_summary,
+)
 
 prices = pd.DataFrame(
     {
@@ -370,7 +382,7 @@ Calculation modules perform no network access and create no files.
 ```python
 from pathlib import Path
 
-from historical_asset_risk.artifacts import load_artifact
+from historical_asset_risk import load_artifact
 
 root = Path("outputs/example")
 simple_returns = load_artifact(
@@ -393,12 +405,10 @@ versions and table shapes they accept.
 ```python
 from pathlib import Path
 
-from historical_asset_risk.artifacts import (
+from historical_asset_risk import (
     read_cash,
     read_instrument_registry,
     read_positions,
-)
-from historical_asset_risk.portfolio import (
     validate_portfolio_snapshot,
     value_portfolio,
 )
@@ -481,8 +491,12 @@ python -m build
 ```
 
 The suite covers calculations, rolling boundaries, no-look-ahead behavior,
-alignment, Yahoo/CSV equivalence, reports, portfolio valuation, artifact schemas,
+alignment, Yahoo/CSV equivalence, reports, portfolio valuation, P&L, covariance
+risk, VaR/ES, stress, frozen schema contracts, the public API surface,
 packaging, clean installation, and the installed CLI.
+
+Version history is in [CHANGELOG.md](CHANGELOG.md); methodology per estimator is
+in [`docs/methodology/`](docs/methodology/README.md).
 
 ## License
 

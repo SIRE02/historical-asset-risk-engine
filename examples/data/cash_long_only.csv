@@ -1,0 +1,2 @@
+portfolio_snapshot_id,portfolio_id,as_of_date,as_of_timestamp,base_currency,market_calendar_id,market_timezone,cash_amount,cash_source
+long-only-2024-01-02,portfolio-lo,2024-01-02,2024-01-02T16:05:00-05:00,USD,XNYS,America/New_York,1500,synthetic custodian record

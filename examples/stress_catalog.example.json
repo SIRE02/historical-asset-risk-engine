@@ -1,0 +1,46 @@
+{
+  "schema_id": "historical-asset-risk/stress-scenario-catalog",
+  "schema_version": "1.experimental",
+  "scenarios": [
+    {
+      "scenario_id": "broad-equity-drawdown",
+      "scenario_version": "1",
+      "name": "Broad equity drawdown",
+      "kind": "hypothetical",
+      "description": "A synchronized one-week sell-off across US equity ETFs.",
+      "session_start": null,
+      "session_end": null,
+      "shocks": [
+        {
+          "instrument_id": "US_QQQ",
+          "simple_return_shock": -0.14
+        },
+        {
+          "instrument_id": "US_SPY",
+          "simple_return_shock": -0.1
+        }
+      ],
+      "content_hash": "sha256:7a653e9bbca62ac196610d8ff9aab55bcf2d9d949f08f8e15540e1d669357b52"
+    },
+    {
+      "scenario_id": "growth-selloff-value-bid",
+      "scenario_version": "1",
+      "name": "Growth sell-off, value bid",
+      "kind": "hypothetical",
+      "description": "Long-duration growth names fall while broad market is flat.",
+      "session_start": null,
+      "session_end": null,
+      "shocks": [
+        {
+          "instrument_id": "US_QQQ",
+          "simple_return_shock": -0.09
+        },
+        {
+          "instrument_id": "US_SPY",
+          "simple_return_shock": -0.01
+        }
+      ],
+      "content_hash": "sha256:af3914d23a76837a5cc14f3619b7bbf8dd61d47495837fa43930de85d9f87e86"
+    }
+  ]
+}
