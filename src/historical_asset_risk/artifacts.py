@@ -39,8 +39,10 @@ from historical_asset_risk.contracts import (
     SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
     SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
     SIMPLE_RETURN_SUMMARY_SCHEMA_ID,
+    STRESS_CATALOG_SCHEMA_ID,
     STRESS_CONTRIBUTIONS_COLUMNS,
     STRESS_CONTRIBUTIONS_SCHEMA_ID,
+    STRESS_SCENARIO_SCHEMA_VERSION,
     STRESS_TEST_RESULTS_COLUMNS,
     STRESS_TEST_RESULTS_SCHEMA_ID,
     TAIL_ANALYTICS_SCHEMA_VERSION,
@@ -238,6 +240,10 @@ ARTIFACT_SCHEMAS: dict[str, tuple[str, str]] = {
         STRESS_CONTRIBUTIONS_SCHEMA_ID,
         TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
+    "stress_scenario_catalog.json": (
+        STRESS_CATALOG_SCHEMA_ID,
+        STRESS_SCENARIO_SCHEMA_VERSION,
+    ),
 }
 ARTIFACT_UNITS: dict[str, str] = {
     "acquired_adjusted_prices.csv": "provider_adjusted_price",
@@ -274,6 +280,7 @@ ARTIFACT_UNITS: dict[str, str] = {
     "trailing_portfolio_tail_risk.csv": "base_currency_loss",
     "stress_test_results.csv": "base_currency_pnl_loss_is_positive",
     "stress_contributions.csv": "base_currency_pnl_loss_is_positive",
+    "stress_scenario_catalog.json": "decimal_simple_return_shocks",
 }
 
 _VALIDATED_INSTRUMENT_OUTPUT_COLUMNS = INSTRUMENT_COLUMNS + ("schema_version",)

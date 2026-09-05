@@ -26,10 +26,12 @@ from typing import Any
 
 import pandas as pd
 
+from historical_asset_risk.contracts import (
+    STRESS_CATALOG_SCHEMA_ID,
+    STRESS_SCENARIO_SCHEMA_VERSION,
+)
 from historical_asset_risk.portfolio_risk import compound_simple_returns
 
-STRESS_CATALOG_SCHEMA_ID = "historical-asset-risk/stress-scenario-catalog"
-STRESS_SCENARIO_SCHEMA_VERSION = "1.experimental"
 _SCENARIO_KINDS = frozenset({"historical", "hypothetical"})
 
 

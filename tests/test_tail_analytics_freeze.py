@@ -66,6 +66,11 @@ _FROZEN_SCHEMAS = {
         "1.experimental",
         "base_currency_pnl_loss_is_positive",
     ),
+    "stress_scenario_catalog.json": (
+        "historical-asset-risk/stress-scenario-catalog",
+        "1.experimental",
+        "decimal_simple_return_shocks",
+    ),
 }
 
 _FROZEN_COLUMNS = {
@@ -314,6 +319,40 @@ def test_frozen_tail_analytics_columns_are_emitted_and_loadable(
         assert tuple(frame.columns) == expected, name
         loaded = load_artifact(output_dir / name, manifest)
         assert tuple(loaded.columns) == expected, name
+
+
+def test_stress_catalog_declares_its_schema_in_the_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The catalog is discoverable from the manifest, like every other artifact."""
+    output_dir = _run(tmp_path, monkeypatch)
+    manifest = json.loads(
+        (output_dir / "run_manifest.json").read_text(encoding="utf-8")
+    )
+    declared = manifest["artifact_schemas"]["stress_scenario_catalog.json"]
+    assert declared == {
+        "schema_id": STRESS_CATALOG_SCHEMA_ID,
+        "schema_version": STRESS_SCENARIO_SCHEMA_VERSION,
+        "units": "decimal_simple_return_shocks",
+    }
+    catalog = json.loads(
+        (output_dir / "stress_scenario_catalog.json").read_text(encoding="utf-8")
+    )
+    # The file describes itself with the same identity the manifest declares.
+    assert catalog["schema_id"] == declared["schema_id"]
+    assert catalog["schema_version"] == declared["schema_version"]
+
+
+def test_load_artifact_still_refuses_the_non_tabular_catalog(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Registering a JSON schema must not make it loadable as a table."""
+    output_dir = _run(tmp_path, monkeypatch)
+    with pytest.raises(ArtifactSchemaError, match="accepts CSV artifacts"):
+        load_artifact(
+            output_dir / "stress_scenario_catalog.json",
+            output_dir / "run_manifest.json",
+        )
 
 
 def test_load_artifact_rejects_a_drifted_tail_analytics_schema(

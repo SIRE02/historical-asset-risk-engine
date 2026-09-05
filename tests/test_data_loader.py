@@ -9,20 +9,7 @@ from historical_asset_risk.data_loader import (
     MarketDataError,
     _extract_adjusted_close,
     clean_adjusted_prices,
-    validate_configuration,
 )
-
-
-def test_configuration_normalizes_symbols_and_rejects_bad_inputs() -> None:
-    assert validate_configuration(
-        [" spy ", "QQQ", "spy"], "2024-01-01", "2024-12-31", 21
-    ) == ["SPY", "QQQ"]
-    with pytest.raises(ValueError, match="At least two"):
-        validate_configuration(["SPY"], "2024-01-01", "2024-12-31", 21)
-    with pytest.raises(ValueError, match="earlier"):
-        validate_configuration(["SPY", "QQQ"], "2025-01-01", "2024-01-01", 21)
-    with pytest.raises(ValueError, match="positive integer"):
-        validate_configuration(["SPY", "QQQ"], "2024-01-01", "2025-01-01", 0)
 
 
 def test_extract_adjusted_close_never_falls_back_to_raw_close() -> None:

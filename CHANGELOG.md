@@ -43,6 +43,11 @@ complete and their contracts are released as `experimental`.
 - Orchestration modules `portfolio_analytics` and `tail_analytics`
   (`compute_portfolio_analytics`, `compute_tail_analytics`), deliberately
   outside the frozen public surface; import them from their submodules.
+- Every emitted data artifact now carries a `run_manifest.json` schema
+  declaration. `stress_scenario_catalog.json` was the last one without: it is
+  registered under `historical-asset-risk/stress-scenario-catalog`, so a
+  consumer can discover its identity from the manifest instead of only from
+  the file's own header. `load_artifact` still accepts CSV only.
 
 ### Changed
 
@@ -52,6 +57,15 @@ complete and their contracts are released as `experimental`.
   `tail_analytics`) and `data_quality_report.json` sections
   (`portfolio.analytics`, `portfolio.tail`) are additive, and are
   `experimental` alongside the schemas they describe.
+
+### Removed
+
+- The pre-provider compatibility wrappers `data_loader.download_adjusted_prices`
+  and `data_loader.validate_configuration`. Neither was reachable from the CLI
+  or the public package surface, and `download_adjusted_prices` had no caller
+  and no test. Acquisition goes through `providers.provider_for` and
+  `load_market_data`; `AnalysisConfig` performs the validation. The remaining
+  wrappers `clean_adjusted_prices` and `normalize_and_validate` are unchanged.
 
 ## 0.1.1
 

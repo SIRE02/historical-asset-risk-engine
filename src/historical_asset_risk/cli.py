@@ -293,6 +293,7 @@ def run_analysis(
     highest, lowest = extreme_correlation_pairs(correlations)
 
     portfolio_analytics_result: PortfolioAnalyticsResult | None = None
+    tail_analytics_result: TailAnalyticsResult | None = None
     if portfolio is not None:
         data_source = {
             "provider": market_data.payload.provider,
@@ -314,8 +315,6 @@ def run_analysis(
             exposure_history=exposure_history,
         )
 
-    tail_analytics_result: TailAnalyticsResult | None = None
-    if portfolio is not None:
         stress_scenarios = (
             load_stress_catalog(config.stress_catalog_path)
             if config.stress_catalog_path is not None

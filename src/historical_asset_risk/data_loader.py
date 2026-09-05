@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +17,6 @@ from historical_asset_risk.providers import (
     MarketDataError,
     MarketDataProvider,
     ProviderPayload,
-    YahooFinanceProvider,
     extract_yahoo_adjusted_close,
 )
 
@@ -30,35 +29,6 @@ class MarketDataResult:
     canonical_records: pd.DataFrame
     payload: ProviderPayload
     quality_report: dict[str, Any]
-
-
-def validate_configuration(
-    tickers: Sequence[str],
-    start_date: str,
-    end_date: str,
-    rolling_window: int,
-) -> list[str]:
-    """Validate legacy loader arguments and return normalized symbols."""
-    if isinstance(tickers, (str, bytes)):
-        raise ValueError("TICKERS must be a sequence containing at least two symbols.")
-    normalized = list(dict.fromkeys(str(ticker).strip().upper() for ticker in tickers))
-    normalized = [ticker for ticker in normalized if ticker]
-    if len(normalized) < 2:
-        raise ValueError("At least two unique ticker symbols are required.")
-    try:
-        start = date.fromisoformat(start_date)
-        end = date.fromisoformat(end_date)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("START_DATE and END_DATE must use YYYY-MM-DD format.") from exc
-    if start >= end:
-        raise ValueError("START_DATE must be earlier than END_DATE.")
-    if (
-        isinstance(rolling_window, bool)
-        or not isinstance(rolling_window, int)
-        or rolling_window <= 0
-    ):
-        raise ValueError("ROLLING_WINDOW must be a positive integer.")
-    return normalized
 
 
 def _canonical_from_wide(adjusted_prices: pd.DataFrame) -> pd.DataFrame:
@@ -248,31 +218,11 @@ def _extract_adjusted_close(raw: pd.DataFrame, tickers: Sequence[str]) -> pd.Dat
     return extract_yahoo_adjusted_close(raw, list(tickers))
 
 
-def download_adjusted_prices(
-    tickers: Sequence[str],
-    start_date: str,
-    end_date: str,
-    rolling_window: int,
-) -> pd.DataFrame:
-    """Compatibility wrapper for an explicit Yahoo provider run."""
-    symbols = validate_configuration(tickers, start_date, end_date, rolling_window)
-    config = AnalysisConfig(
-        provider="yahoo",
-        tickers=tuple(symbols),
-        start_date=start_date,
-        end_date=end_date,
-        rolling_window=rolling_window,
-    )
-    return load_market_data(config, YahooFinanceProvider()).prices
-
-
 __all__ = [
     "MarketDataResult",
     "clean_adjusted_prices",
-    "download_adjusted_prices",
     "load_market_data",
     "normalize_and_validate",
     "persist_acquisition",
     "persist_quality_report",
-    "validate_configuration",
 ]

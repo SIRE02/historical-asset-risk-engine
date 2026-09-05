@@ -103,6 +103,8 @@ TAIL_RISK_COMPARISON_SCHEMA_ID = "historical-asset-risk/tail-risk-comparison"
 TRAILING_TAIL_RISK_SCHEMA_ID = "historical-asset-risk/trailing-portfolio-tail-risk"
 STRESS_TEST_RESULTS_SCHEMA_ID = "historical-asset-risk/stress-test-results"
 STRESS_CONTRIBUTIONS_SCHEMA_ID = "historical-asset-risk/stress-contributions"
+STRESS_CATALOG_SCHEMA_ID = "historical-asset-risk/stress-scenario-catalog"
+STRESS_SCENARIO_SCHEMA_VERSION = "1.experimental"
 
 RISK_REALIZATIONS_COLUMNS: tuple[str, ...] = (
     "portfolio_id",
@@ -434,8 +436,10 @@ __all__ = [
     "PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID",
     "PROXY_REALIZED_PNL_COLUMNS",
     "RISK_REALIZATIONS_COLUMNS",
+    "STRESS_CATALOG_SCHEMA_ID",
     "STRESS_CONTRIBUTIONS_COLUMNS",
     "STRESS_CONTRIBUTIONS_SCHEMA_ID",
+    "STRESS_SCENARIO_SCHEMA_VERSION",
     "STRESS_TEST_RESULTS_COLUMNS",
     "STRESS_TEST_RESULTS_SCHEMA_ID",
     "TAIL_RISK_COMPARISON_COLUMNS",
