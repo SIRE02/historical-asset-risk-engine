@@ -5,7 +5,7 @@ measure the tail of a *released* portfolio loss sample (loss-positive:
 ``loss = -pnl``). They are measurements, not forecasts: no coverage tests, no
 research splits, no next-session forecast records.
 
-Conventions (roadmap sections 11.2-11.3):
+Conventions (see ``docs/methodology/tail-risk-and-stress.md``):
 
 * Confidence level ``alpha`` satisfies ``0.5 < alpha < 1``.
 * Canonical historical VaR is the generalized-inverse empirical quantile

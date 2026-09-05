@@ -6,7 +6,7 @@ and file writing. It maps provider return columns to canonical
 hypothetical historical P&L and (with a dated exposure history) proxy realized
 P&L. It never rewrites ``simple_returns.csv`` or any other frozen consumer file.
 
-Conventions (see ``docs/historical-asset-risk-engine.md`` section 5.3):
+Conventions (see ``docs/methodology/pnl-and-covariance-risk.md``):
 
 * Portfolio P&L uses daily **simple** returns because currency P&L aggregates
   linearly as ``exposure * simple_return``.
