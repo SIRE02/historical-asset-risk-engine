@@ -155,7 +155,7 @@ def resolve_market_calendar(
 __all__ = [
     "CALENDAR_SOURCE",
     "CALENDAR_VERSION",
-    "MarketCalendar",
     "SUPPORTED_MARKET_TIMEZONE",
+    "MarketCalendar",
     "resolve_market_calendar",
 ]

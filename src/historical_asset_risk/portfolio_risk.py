@@ -315,9 +315,9 @@ def portfolio_risk_from_covariance(
 
 __all__ = [
     "CONDITION_WARNING_THRESHOLD",
+    "VARIANCE_ZERO_TOLERANCE",
     "CovarianceConditionReport",
     "PortfolioRiskFromCovariance",
-    "VARIANCE_ZERO_TOLERANCE",
     "compound_simple_returns",
     "covariance_condition_report",
     "portfolio_risk_from_covariance",

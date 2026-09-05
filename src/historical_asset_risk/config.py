@@ -341,4 +341,4 @@ def load_configuration(
     return AnalysisConfig(**values)
 
 
-__all__ = ["AnalysisConfig", "DEFAULT_CONFIGURATION", "load_configuration"]
+__all__ = ["DEFAULT_CONFIGURATION", "AnalysisConfig", "load_configuration"]
