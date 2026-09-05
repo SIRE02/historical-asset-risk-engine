@@ -1,4 +1,4 @@
-"""Known-value and invariant tests for Phase 4 alignment and hypothetical P&L."""
+"""Known-value and invariant tests for return alignment and hypothetical P&L."""
 
 from __future__ import annotations
 

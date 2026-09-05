@@ -1,9 +1,9 @@
-"""Phase 4 simple-return covariance risk and Euler contributions.
+"""Simple-return covariance risk and Euler contributions.
 
 Provider-, configuration-, and file-system-independent. These estimators use
 **aligned simple returns** (see :mod:`historical_asset_risk.pnl`) because exact
-linear P&L aggregation requires simple-return covariance. The Phase 2
-log-return ``covariance_matrix.csv`` remains a separate asset-level descriptive
+linear P&L aggregation requires simple-return covariance. The descriptive
+log-return ``covariance_matrix.csv`` remains a separate asset-level
 artifact and is never reused here.
 
 Conventions:
@@ -120,7 +120,7 @@ def compound_simple_returns(
     """Cumulative simple return ``prod(1 + r) - 1`` over an explicit session range.
 
     ``start`` and ``end`` are matched against the matrix session index and are
-    inclusive. This helper feeds Phase 5 historical shocks; it is not a weekly
+    inclusive. This helper feeds historical stress shocks; it is not a weekly
     research panel.
     """
     instrument_ids = [str(column) for column in matrix.columns]

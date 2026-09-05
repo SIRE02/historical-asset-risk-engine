@@ -1,4 +1,4 @@
-"""Offline end-to-end Phase 3 portfolio workflow test."""
+"""Offline end-to-end portfolio valuation workflow test."""
 
 from __future__ import annotations
 

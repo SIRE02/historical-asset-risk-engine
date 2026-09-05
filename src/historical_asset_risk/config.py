@@ -229,7 +229,7 @@ class AnalysisConfig:
 
     @property
     def portfolio_enabled(self) -> bool:
-        """Whether the complete Phase 3 input set is configured."""
+        """Whether the complete portfolio-book input set is configured."""
         return self.instrument_registry_path is not None
 
     def to_dict(self) -> dict[str, Any]:

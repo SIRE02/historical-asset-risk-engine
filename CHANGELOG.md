@@ -32,12 +32,12 @@ but do not change the meaning of a frozen consumer artifact.
 
 ## 0.2.0
 
-Public package freeze. Phases 4 and 5 are complete and their contracts are
-released as `experimental`.
+Public package freeze. The portfolio-analytics and tail-analytics layers are
+complete and their contracts are released as `experimental`.
 
 ### Added
 
-- **Phase 4 - portfolio P&L, aggregation, and realizations.**
+- **Portfolio P&L, aggregation, and realizations.**
   `align_portfolio_simple_returns`, `hypothetical_pnl`, `proxy_realized_pnl`,
   `sample_simple_return_covariance`, `simple_return_correlation`,
   `simple_return_summary`, `compound_simple_returns`,
@@ -50,7 +50,7 @@ released as `experimental`.
   `portfolio_simple_return_correlation.csv`, `simple_return_summary.csv`,
   `portfolio_risk_summary.csv`, `portfolio_risk_contributions.csv`,
   `portfolio_concentration_summary.csv`.
-- **Phase 5 - tail risk and stress.** `historical_var`, `historical_es`,
+- **Tail risk and stress.** `historical_var`, `historical_es`,
   `normal_var`, `normal_es`, `apply_stress`, `load_stress_catalog`. New CLI
   inputs `--tail-risk-confidence-level` / `--tail-risk-window` /
   `--stress-catalog-path`. New artifacts: `portfolio_value_at_risk.csv`,
@@ -84,6 +84,6 @@ released as `experimental`.
 
 ## 0.1.0
 
-- First stable foundation release. Phases 1-3: descriptive asset-risk
-  statistics, the installable package and configuration system, and the
-  portfolio contract (valuation, exposure, snapshot identity).
+- First stable foundation release: descriptive asset-risk statistics, the
+  installable package and configuration system, and the portfolio contract
+  (valuation, exposure, snapshot identity).

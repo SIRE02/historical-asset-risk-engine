@@ -1,4 +1,4 @@
-"""Freeze the intentional public package surface (Phase 6)."""
+"""Freeze the intentional public package surface."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ _EXPECTED_PUBLIC_API = {
     "load_configuration",
     "MarketCalendar",
     "resolve_market_calendar",
-    # Phase 1-2 descriptive calculations
+    # Descriptive calculations
     "calculate_simple_returns",
     "calculate_log_returns",
     "summarize_returns",
@@ -31,12 +31,12 @@ _EXPECTED_PUBLIC_API = {
     "rolling_correlation",
     "rolling_covariance",
     "extreme_correlation_pairs",
-    # Phase 3 portfolio contract
+    # Portfolio contract
     "validate_portfolio_snapshot",
     "value_portfolio",
     "calculate_currency_valuation",
     "exposure_snapshot_id",
-    # Phase 4 P&L and covariance risk
+    # P&L and covariance risk
     "map_provider_tickers_to_instrument_ids",
     "align_portfolio_simple_returns",
     "hypothetical_pnl",
@@ -48,7 +48,7 @@ _EXPECTED_PUBLIC_API = {
     "compound_simple_returns",
     "portfolio_risk_from_covariance",
     "covariance_condition_report",
-    # Phase 5 tail risk and stress
+    # Tail risk and stress
     "historical_var",
     "historical_es",
     "normal_var",

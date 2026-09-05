@@ -1,4 +1,4 @@
-"""Strict Phase 3 CSV parsing and version-aware artifact loading."""
+"""Strict book CSV parsing and version-aware artifact loading."""
 
 from __future__ import annotations
 
@@ -525,7 +525,7 @@ def read_cash(path: Path) -> tuple[Cash, ...]:
 def portfolio_artifact_frames(
     valuation: PortfolioValuation,
 ) -> dict[str, pd.DataFrame]:
-    """Create the four required deterministic Phase 3 CSV tables."""
+    """Create the four required deterministic book CSV tables."""
     snapshot = valuation.snapshot
     cash = snapshot.cash
     instrument_rows = [

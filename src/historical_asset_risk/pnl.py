@@ -1,7 +1,7 @@
-"""Phase 4 portfolio profit-and-loss from a Phase 3 book and simple returns.
+"""Portfolio profit-and-loss from a validated book and simple returns.
 
 This module is deliberately independent of providers, configuration, plotting,
-and file writing. It maps Phase 1 provider return columns to canonical
+and file writing. It maps provider return columns to canonical
 ``instrument_id`` values, aligns simple returns to a held book, and produces
 hypothetical historical P&L and (with a dated exposure history) proxy realized
 P&L. It never rewrites ``simple_returns.csv`` or any other frozen consumer file.
@@ -179,11 +179,11 @@ def align_portfolio_simple_returns(
     market_calendar_id: str,
     data_snapshot_id: str,
 ) -> AlignedPortfolioReturns:
-    """Restrict and rename Phase 1 simple returns to the held book.
+    """Restrict and rename acquired simple returns to the held book.
 
-    ``simple_returns`` is the wide Phase 1 matrix (``date`` index, provider
+    ``simple_returns`` is the wide acquired matrix (``date`` index, provider
     columns). ``price_index`` is the full adjusted-price session index used to
-    recover each return's interval start (the preceding session). The Phase 2
+    recover each return's interval start (the preceding session). The
     gap-spanning policy guarantees retained sessions are consecutive, so the
     interval start is simply the previous entry in ``price_index``.
     """
@@ -322,7 +322,7 @@ def hypothetical_pnl(
 
 @dataclass(frozen=True)
 class ProxyExposureSnapshot:
-    """One dated, immutable Phase 3 exposure snapshot in an ordered history.
+    """One dated, immutable exposure snapshot in an ordered history.
 
     ``currency_exposures`` are beginning-of-period signed base-currency
     exposures (``instrument_id`` -> ``quantity * valuation_price``).

@@ -1,4 +1,4 @@
-"""Known-value and invariant tests for Phase 5 stress scenarios."""
+"""Known-value and invariant tests for stress scenarios."""
 
 from __future__ import annotations
 

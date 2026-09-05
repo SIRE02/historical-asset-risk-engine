@@ -1,4 +1,4 @@
-"""Phase 5 named historical and hypothetical stress scenarios.
+"""Named historical and hypothetical stress scenarios.
 
 Stress is deliberately separate from probabilistic VaR: a scenario carries no
 probability. A scenario applies explicit ``instrument_id`` simple-return shocks
@@ -7,7 +7,7 @@ to the current as-of currency exposures:
 ``scenario_pnl[i] = x[i] * q[i]`` and ``scenario_loss[i] = -scenario_pnl[i]``.
 
 Historical scenarios derive their shocks from observed simple returns over an
-explicit session range using the Phase 4 compounding helper
+explicit session range using the compounding helper
 ``cumulative_shock[i] = product(1 + simple_return[i, d]) - 1``. Published
 ``(scenario_id, scenario_version)`` pairs are immutable and content-hashed;
 loading a catalog re-verifies every hash. Factor shocks and silent proxies are

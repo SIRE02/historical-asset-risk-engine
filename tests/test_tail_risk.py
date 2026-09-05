@@ -1,4 +1,4 @@
-"""Known-value and invariant tests for Phase 5 historical VaR and ES."""
+"""Known-value and invariant tests for historical VaR and ES."""
 
 from __future__ import annotations
 

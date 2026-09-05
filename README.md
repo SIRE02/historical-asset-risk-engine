@@ -236,7 +236,7 @@ Portfolio runs also emit the book P&L and covariance-risk layer:
   names
 
 Passing `--positions-history-path` and `--cash-history-path` (an ordered
-collection of dated Phase 3 snapshots, same row schema) additionally writes
+collection of dated book snapshots, same row schema) additionally writes
 `proxy_realized_portfolio_pnl.csv` and the versioned `risk_realizations.csv`
 identity that a downstream forecasting engine can join its own predictions to.
 HARE does not generate forecasts or run coverage tests.
@@ -381,8 +381,8 @@ python -m pip install "historical-asset-risk-engine @ git+https://github.com/SIR
 ```
 
 Everything re-exported from the top-level `historical_asset_risk` namespace is
-the supported, versioned surface: the pure calculation functions from every
-phase, their result and contract dataclasses, the artifact schema registry
+the supported, versioned surface: every pure calculation function, their
+result and contract dataclasses, the artifact schema registry
 (`ARTIFACT_SCHEMAS`, `ARTIFACT_UNITS`), `load_artifact`, `AnalysisConfig`, the
 CSV readers, and the market calendar. `historical_asset_risk.__all__` is the
 authoritative list. Run orchestration (`cli.run_analysis`,

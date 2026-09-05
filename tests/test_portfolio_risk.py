@@ -1,4 +1,4 @@
-"""Known-value and invariant tests for Phase 4 simple-return covariance risk."""
+"""Known-value and invariant tests for simple-return covariance risk."""
 
 from __future__ import annotations
 

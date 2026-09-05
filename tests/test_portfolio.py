@@ -1,4 +1,4 @@
-"""Known-value, invariant, and validation tests for Phase 3 portfolios."""
+"""Known-value, invariant, and validation tests for portfolio books."""
 
 from __future__ import annotations
 

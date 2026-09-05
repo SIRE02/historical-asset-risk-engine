@@ -1,4 +1,4 @@
-"""Deterministic, versioned market-session validation used by Phase 3."""
+"""Deterministic, versioned market-session validation for portfolio books."""
 
 from __future__ import annotations
 

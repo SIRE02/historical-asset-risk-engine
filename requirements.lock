@@ -1,5 +1,6 @@
 # Historical-asset-risk-engine Python 3.12 resolution (2026-08-16).
-# Unchanged for 0.2.0: Phases 4-6 add no runtime dependency (VaR/ES use the
+# Unchanged for 0.2.0: the portfolio, tail-risk, and freeze work added no
+# runtime dependency (VaR/ES use the
 # standard-library statistics module). CI installs this exact environment
 # before installing the local package without deps.
 beautifulsoup4==4.15.0

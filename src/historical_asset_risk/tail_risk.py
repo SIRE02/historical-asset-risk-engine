@@ -1,7 +1,7 @@
-"""Phase 5 historical tail-risk measurement on a portfolio-loss sample.
+"""Historical tail-risk measurement on a portfolio-loss sample.
 
 Provider-, configuration-, and file-system-independent. These estimators
-measure the tail of a *released* Phase 4 loss sample (loss-positive:
+measure the tail of a *released* portfolio loss sample (loss-positive:
 ``loss = -pnl``). They are measurements, not forecasts: no coverage tests, no
 research splits, no next-session forecast records.
 
@@ -9,8 +9,8 @@ Conventions (roadmap sections 11.2-11.3):
 
 * Confidence level ``alpha`` satisfies ``0.5 < alpha < 1``.
 * Canonical historical VaR is the generalized-inverse empirical quantile
-  ``VaR_alpha(L) = L_(ceil(n * alpha))`` on ascending losses. The Phase 2
-  descriptive ``quantile_method`` never redefines this.
+  ``VaR_alpha(L) = L_(ceil(n * alpha))`` on ascending losses. The descriptive
+  ``quantile_method`` never redefines this.
 * Historical ES uses the same equal-mass empirical distribution with an exact
   fractional boundary weight; its upper-tail probability is exactly
   ``1 - alpha``.
