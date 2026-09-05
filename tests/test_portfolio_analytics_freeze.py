@@ -1,8 +1,8 @@
-"""Freeze the Phase 4 portfolio-loss and realization contract for Phase 5.
+"""Freeze the portfolio-loss and realization contract the tail layer reads.
 
-The schema version stays ``1.experimental`` (Phase 6 owns promotion), but the
+The schema version stays ``1.experimental`` pending promotion, but the
 schema id, units, loss sign, and exact column set of the loss and realization
-artifacts must not drift while Phase 5 tail-risk and stress work is written.
+artifacts must not drift while tail-risk and stress work reads them.
 These assertions use literal expected values so a change to a source constant
 is still caught.
 """

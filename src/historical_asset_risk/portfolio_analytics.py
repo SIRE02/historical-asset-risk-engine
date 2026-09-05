@@ -1,4 +1,4 @@
-"""Phase 4 orchestration: turn a Phase 3 book plus simple returns into artifacts.
+"""Portfolio-analytics orchestration: a valued book and simple returns to artifacts.
 
 This module composes the pure functions in :mod:`historical_asset_risk.pnl` and
 :mod:`historical_asset_risk.portfolio_risk` into the deterministic CSV frames,
@@ -18,8 +18,8 @@ import pandas as pd
 from historical_asset_risk.contracts import (
     HYPOTHETICAL_PNL_COLUMNS,
     HYPOTHETICAL_PNL_SCHEMA_ID,
-    PHASE4_SCHEMA_VERSION,
     PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
+    PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
     PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
     PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
@@ -52,7 +52,7 @@ from historical_asset_risk.portfolio_risk import (
     simple_return_summary,
 )
 
-PHASE4_ARTIFACT_NAMES: tuple[str, ...] = (
+PORTFOLIO_ANALYTICS_ARTIFACT_NAMES: tuple[str, ...] = (
     "portfolio_aligned_simple_returns.csv",
     "hypothetical_portfolio_pnl.csv",
     "portfolio_simple_return_covariance.csv",
@@ -65,8 +65,8 @@ PHASE4_ARTIFACT_NAMES: tuple[str, ...] = (
 
 
 @dataclass(frozen=True)
-class Phase4Result:
-    """Everything the CLI needs to persist the Phase 4 book layer."""
+class PortfolioAnalyticsResult:
+    """Everything the CLI needs to persist the portfolio-analytics layer."""
 
     frames: dict[str, pd.DataFrame]
     """Artifact name -> deterministic frame. Written with ``index=False``."""
@@ -150,7 +150,7 @@ def _proxy_realized_artifacts(
         units="base_currency",
         loss_sign="loss_is_positive",
         calculation_version=RISK_REALIZATION_CALCULATION_VERSION,
-        schema_version=PHASE4_SCHEMA_VERSION,
+        schema_version=PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ).loc[:, list(PROXY_REALIZED_PNL_COLUMNS)]
     realizations_frame = pd.DataFrame(
         {
@@ -165,7 +165,7 @@ def _proxy_realized_artifacts(
             "outcome_status": proxy["outcome_status"],
             "data_snapshot_id": data_snapshot_id,
             "calculation_version": RISK_REALIZATION_CALCULATION_VERSION,
-            "schema_version": PHASE4_SCHEMA_VERSION,
+            "schema_version": PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
         }
     ).loc[:, list(RISK_REALIZATIONS_COLUMNS)]
 
@@ -201,7 +201,7 @@ def _proxy_realized_artifacts(
     }
 
 
-def compute_phase4(
+def compute_portfolio_analytics(
     valuation: PortfolioValuation,
     simple_returns: pd.DataFrame,
     price_index: pd.DatetimeIndex,
@@ -210,10 +210,10 @@ def compute_phase4(
     observations_per_year: int,
     registry_instruments: Sequence[Instrument] = (),
     exposure_history: Sequence[ProxyExposureSnapshot] = (),
-) -> Phase4Result:
-    """Compute every Phase 4 artifact frame for one valued snapshot.
+) -> PortfolioAnalyticsResult:
+    """Compute every portfolio-analytics artifact frame for one valued snapshot.
 
-    ``exposure_history`` is an optional ordered collection of dated Phase 3
+    ``exposure_history`` is an optional ordered collection of dated
     exposure snapshots. When supplied it adds proxy realized P&L and the
     versioned realization identity artifact.
     """
@@ -266,7 +266,7 @@ def compute_phase4(
         return_type=ALIGNED_SIMPLE_RETURN_TYPE,
         units="base_currency",
         loss_sign="loss_is_positive",
-        schema_version=PHASE4_SCHEMA_VERSION,
+        schema_version=PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
         **identity,
     )
     pnl_frame = pnl_frame.loc[:, list(HYPOTHETICAL_PNL_COLUMNS)]
@@ -277,14 +277,14 @@ def compute_phase4(
         ),
         return_type=ALIGNED_SIMPLE_RETURN_TYPE,
         ddof=SAMPLE_DDOF,
-        schema_version=PHASE4_SCHEMA_VERSION,
+        schema_version=PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     )
 
     contributions_frame = risk.contributions.assign(
         exposure_snapshot_id=valuation.exposure_snapshot_id,
         currency_exposure=lambda frame: frame["instrument_id"].map(currency_exposures),
         zero_volatility_policy_applied=risk.zero_volatility,
-        schema_version=PHASE4_SCHEMA_VERSION,
+        schema_version=PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     )
     contributions_frame = contributions_frame.loc[
         :,
@@ -319,7 +319,7 @@ def compute_phase4(
                 "zero_volatility_policy_applied": risk.zero_volatility,
                 "covariance_condition_number": risk.condition_number,
                 "covariance_warning": risk.warning or "",
-                "schema_version": PHASE4_SCHEMA_VERSION,
+                "schema_version": PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
             }
         ]
     )
@@ -331,7 +331,7 @@ def compute_phase4(
                 "portfolio_id": cash.portfolio_id,
                 "as_of_date": cash.as_of_date.isoformat(),
                 **{key: float(value) for key, value in risk.concentration.items()},
-                "schema_version": PHASE4_SCHEMA_VERSION,
+                "schema_version": PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
             }
         ]
     )
@@ -417,14 +417,14 @@ def compute_phase4(
             f"/{proxy_section['quality']['record_count']} snapshots"
         )
     summary_lines = (
-        f"Phase 4 book P&L: {observation_count} aligned intervals, "
+        f"Book P&L: {observation_count} aligned intervals, "
         f"return vol {risk.return_volatility:.6f}, "
         f"currency vol {risk.currency_volatility:.2f} {cash.base_currency}"
         + (f" [{risk.warning}]" if risk.warning else "")
         + proxy_summary,
     )
 
-    return Phase4Result(
+    return PortfolioAnalyticsResult(
         frames=frames,
         matrix_frames=frozenset(
             {
@@ -438,7 +438,7 @@ def compute_phase4(
     )
 
 
-PHASE4_SCHEMA_IDS: dict[str, str] = {
+PORTFOLIO_ANALYTICS_SCHEMA_IDS: dict[str, str] = {
     "portfolio_aligned_simple_returns.csv": (
         PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID
     ),
@@ -455,8 +455,8 @@ PHASE4_SCHEMA_IDS: dict[str, str] = {
 
 
 __all__ = [
-    "PHASE4_ARTIFACT_NAMES",
-    "PHASE4_SCHEMA_IDS",
-    "Phase4Result",
-    "compute_phase4",
+    "PORTFOLIO_ANALYTICS_ARTIFACT_NAMES",
+    "PORTFOLIO_ANALYTICS_SCHEMA_IDS",
+    "PortfolioAnalyticsResult",
+    "compute_portfolio_analytics",
 ]

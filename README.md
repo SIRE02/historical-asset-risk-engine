@@ -118,8 +118,8 @@ quantile_method = "linear"
 downside_target = 0.0
 output_dir = "outputs"
 
-# Optional portfolio book. Supplying all three enables Phase 3 valuation,
-# Phase 4 P&L and covariance risk, and Phase 5 tail risk.
+# Optional portfolio book. Supplying all three enables valuation,
+# P&L and covariance risk, and tail risk.
 # instrument_registry_path = "examples/data/instrument_registry.csv"
 # positions_path = "examples/data/positions.csv"
 # cash_path = "examples/data/cash.csv"
@@ -129,7 +129,7 @@ output_dir = "outputs"
 # positions_history_path = "..."
 # cash_history_path = "..."
 
-# Phase 5 knobs.
+# Tail-risk knobs.
 # tail_risk_confidence_level = 0.95    # 0.5 < alpha < 1
 # tail_risk_window = 252               # trailing window; omit for the full sample
 # stress_catalog_path = "examples/stress_catalog.example.json"
@@ -217,7 +217,7 @@ Yahoo runs add `acquired_adjusted_prices.csv`. Portfolio runs add:
 - `portfolio_valuation.csv`
 - `portfolio_exposure_summary.csv`
 
-Portfolio runs also emit the Phase 4 book P&L and risk layer:
+Portfolio runs also emit the book P&L and covariance-risk layer:
 
 - `portfolio_aligned_simple_returns.csv` — held-book simple returns aligned by
   `instrument_id` with explicit intervals
@@ -241,7 +241,7 @@ collection of dated Phase 3 snapshots, same row schema) additionally writes
 identity that a downstream forecasting engine can join its own predictions to.
 HARE does not generate forecasts or run coverage tests.
 
-Portfolio runs also measure the tail of that released loss sample (Phase 5):
+Portfolio runs also measure the tail of that released loss sample:
 
 - `portfolio_value_at_risk.csv` — canonical historical VaR
   `L_(ceil(n * alpha))`, in return and currency dimensions, never floored at
@@ -385,8 +385,9 @@ the supported, versioned surface: the pure calculation functions from every
 phase, their result and contract dataclasses, the artifact schema registry
 (`ARTIFACT_SCHEMAS`, `ARTIFACT_UNITS`), `load_artifact`, `AnalysisConfig`, the
 CSV readers, and the market calendar. `historical_asset_risk.__all__` is the
-authoritative list. Run orchestration (`cli.run_analysis`, `compute_phase4`,
-`compute_phase5`), providers, and plotting are intentionally not part of that
+authoritative list. Run orchestration (`cli.run_analysis`,
+`compute_portfolio_analytics`, `compute_tail_analytics`), providers, and
+plotting are intentionally not part of that
 surface; import them from their submodules if you need them. Every estimator is
 documented under [`docs/methodology/`](docs/methodology/README.md).
 
@@ -493,8 +494,8 @@ scope filters.
 - Generated artifacts with schema identities, versions, and units
 - Estimation and missing-data conventions
 - Portfolio sources, calendar, reconciliation, and snapshot identity when
-  enabled, plus `portfolio_phase4` and `portfolio_phase5` sections recording the
-  P&L, covariance, tail-risk, and stress conventions
+  enabled, plus `portfolio_analytics` and `tail_analytics` sections recording
+  the P&L, covariance, tail-risk, and stress conventions
 
 CSV runs also record the resolved source path and file modification time. These
 reports describe the data actually analyzed, not only what was requested.

@@ -1,8 +1,8 @@
-"""Freeze the Phase 5 tail-risk and stress column contract for Phase 6.
+"""Freeze the tail-risk and stress column contract.
 
-Schema versions stay ``1.experimental`` (Phase 6 owns promotion), but the
-schema id, units, and exact column set of each Phase 5 artifact must not drift
-while Phase 6's public-API freeze lands. Expected values are literal so a
+Schema versions stay ``1.experimental`` pending promotion, but the schema id,
+units, and exact column set of each tail-analytics artifact must not drift
+behind the frozen public API. Expected values are literal so a
 change to a source constant is still caught.
 """
 
@@ -298,13 +298,13 @@ def _run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return output_dir
 
 
-def test_frozen_phase5_schema_identities_and_units() -> None:
+def test_frozen_tail_analytics_schema_identities_and_units() -> None:
     for name, (schema_id, version, units) in _FROZEN_SCHEMAS.items():
         assert ARTIFACT_SCHEMAS[name] == (schema_id, version), name
         assert ARTIFACT_UNITS[name] == units, name
 
 
-def test_frozen_phase5_columns_are_emitted_and_loadable(
+def test_frozen_tail_analytics_columns_are_emitted_and_loadable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     output_dir = _run(tmp_path, monkeypatch)
@@ -316,7 +316,7 @@ def test_frozen_phase5_columns_are_emitted_and_loadable(
         assert tuple(loaded.columns) == expected, name
 
 
-def test_load_artifact_rejects_a_drifted_phase5_schema(
+def test_load_artifact_rejects_a_drifted_tail_analytics_schema(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     output_dir = _run(tmp_path, monkeypatch)

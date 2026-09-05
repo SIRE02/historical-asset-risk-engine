@@ -140,8 +140,8 @@ def test_returns_only_run_writes_the_frozen_set_without_a_book(
     ):
         assert key in manifest, key
     assert "portfolio" not in manifest
-    assert "portfolio_phase4" not in manifest
-    assert "portfolio_phase5" not in manifest
+    assert "portfolio_analytics" not in manifest
+    assert "tail_analytics" not in manifest
 
     quality = json.loads((output_dir / "data_quality_report.json").read_text())
     assert "portfolio" not in quality

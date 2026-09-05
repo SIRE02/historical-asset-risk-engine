@@ -1,7 +1,7 @@
-"""Phase 5 orchestration: tail-risk and stress artifacts for a released book.
+"""Tail-analytics orchestration: tail-risk and stress artifacts for a released book.
 
 Composes :mod:`historical_asset_risk.tail_risk` and
-:mod:`historical_asset_risk.stress` over the Phase 4 loss samples. Performs no
+:mod:`historical_asset_risk.stress` over the portfolio loss samples. Performs no
 file writing and no market-data acquisition; the CLI owns those.
 """
 
@@ -16,11 +16,11 @@ import pandas as pd
 
 from historical_asset_risk.contracts import (
     EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS,
-    PHASE5_SCHEMA_VERSION,
     PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS,
     PORTFOLIO_VALUE_AT_RISK_COLUMNS,
     STRESS_CONTRIBUTIONS_COLUMNS,
     STRESS_TEST_RESULTS_COLUMNS,
+    TAIL_ANALYTICS_SCHEMA_VERSION,
     TAIL_RISK_COMPARISON_COLUMNS,
     TRAILING_TAIL_RISK_COLUMNS,
     Instrument,
@@ -44,7 +44,7 @@ from historical_asset_risk.tail_risk import (
     normal_var,
 )
 
-PHASE5_CORE_ARTIFACT_NAMES: tuple[str, ...] = (
+TAIL_ANALYTICS_CORE_ARTIFACT_NAMES: tuple[str, ...] = (
     "portfolio_value_at_risk.csv",
     "portfolio_expected_shortfall.csv",
     "portfolio_expected_shortfall_tail_weights.csv",
@@ -58,8 +58,8 @@ _DIMENSIONS = (
 
 
 @dataclass(frozen=True)
-class Phase5Result:
-    """Everything the CLI needs to persist the Phase 5 tail-risk layer."""
+class TailAnalyticsResult:
+    """Everything the CLI needs to persist the tail-analytics layer."""
 
     frames: dict[str, pd.DataFrame]
     catalog_json: dict[str, Any] | None
@@ -72,7 +72,7 @@ def _loss_sample(matrix: np.ndarray, weights: list[float]) -> np.ndarray:
     return -(matrix @ np.asarray(weights, dtype=float))
 
 
-def compute_phase5(
+def compute_tail_analytics(
     valuation: PortfolioValuation,
     simple_returns: pd.DataFrame,
     price_index: pd.DatetimeIndex,
@@ -83,8 +83,8 @@ def compute_phase5(
     registry_instruments: Sequence[Instrument] = (),
     exposure_history: Sequence[ProxyExposureSnapshot] = (),
     stress_scenarios: Sequence[StressScenario] = (),
-) -> Phase5Result:
-    """Compute every Phase 5 artifact frame for one released book."""
+) -> TailAnalyticsResult:
+    """Compute every tail-analytics artifact frame for one released book."""
     snapshot = valuation.snapshot
     cash = snapshot.cash
     held_ids = list(snapshot.reconciliation.held_instrument_ids)
@@ -157,7 +157,7 @@ def compute_phase5(
                 "order_statistic_rank": hv.order_statistic_rank,
                 "quantile_method": hv.quantile_method,
                 "tail_sample_warning": hv.tail_sample_warning or "",
-                "schema_version": PHASE5_SCHEMA_VERSION,
+                "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
             }
         )
         es_rows.append(
@@ -175,7 +175,7 @@ def compute_phase5(
                 "contributing_observation_count": he.contributing_observation_count,
                 "es_ge_var": he.es_ge_var,
                 "tail_sample_warning": he.tail_sample_warning or "",
-                "schema_version": PHASE5_SCHEMA_VERSION,
+                "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
             }
         )
         for item in he.tail_contributions:
@@ -188,7 +188,7 @@ def compute_phase5(
                     "order_statistic_rank": item.order_statistic_rank,
                     "loss": item.loss,
                     "weight": item.weight,
-                    "schema_version": PHASE5_SCHEMA_VERSION,
+                    "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
                 }
             )
         comparison_rows.append(
@@ -207,7 +207,7 @@ def compute_phase5(
                 "mean_loss": nv.mean_loss,
                 "standard_deviation": nv.standard_deviation,
                 "z_alpha": nv.z_alpha,
-                "schema_version": PHASE5_SCHEMA_VERSION,
+                "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
             }
         )
 
@@ -275,12 +275,12 @@ def compute_phase5(
     var_return = frames["portfolio_value_at_risk.csv"].iloc[0]["value_at_risk"]
     var_currency = frames["portfolio_value_at_risk.csv"].iloc[1]["value_at_risk"]
     summary = (
-        f"Phase 5 tail risk (alpha {alpha:.4g}): return VaR {var_return:.6f}, "
+        f"Tail risk (alpha {alpha:.4g}): return VaR {var_return:.6f}, "
         f"currency VaR {var_currency:.2f} {cash.base_currency}"
     )
     if stress["scenario_count"]:
         summary += f"; {stress['scenario_count']} stress scenario(s)"
-    return Phase5Result(
+    return TailAnalyticsResult(
         frames=frames,
         catalog_json=stress["catalog_json"],
         quality_section=quality_section,
@@ -338,7 +338,7 @@ def _trailing_tail_risk(
                     "es_ge_var": "",
                     "outcome_status": "no_trailing_observations",
                     "units": "base_currency",
-                    "schema_version": PHASE5_SCHEMA_VERSION,
+                    "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
                 }
             )
             continue
@@ -361,7 +361,7 @@ def _trailing_tail_risk(
                 "es_ge_var": he.es_ge_var,
                 "outcome_status": "measured",
                 "units": "base_currency",
-                "schema_version": PHASE5_SCHEMA_VERSION,
+                "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
             }
         )
     return {
@@ -406,7 +406,7 @@ def _stress_artifacts(
                 "scenario_loss": outcome.scenario_loss,
                 "units": "base_currency",
                 "loss_sign": "loss_is_positive",
-                "schema_version": PHASE5_SCHEMA_VERSION,
+                "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
             }
         )
         for item in outcome.contributions:
@@ -420,7 +420,7 @@ def _stress_artifacts(
                     "simple_return_shock": item.simple_return_shock,
                     "scenario_pnl": item.scenario_pnl,
                     "scenario_loss": item.scenario_loss,
-                    "schema_version": PHASE5_SCHEMA_VERSION,
+                    "schema_version": TAIL_ANALYTICS_SCHEMA_VERSION,
                 }
             )
         catalog_entries.append(
@@ -469,4 +469,8 @@ def _stress_artifacts(
     }
 
 
-__all__ = ["PHASE5_CORE_ARTIFACT_NAMES", "Phase5Result", "compute_phase5"]
+__all__ = [
+    "TAIL_ANALYTICS_CORE_ARTIFACT_NAMES",
+    "TailAnalyticsResult",
+    "compute_tail_analytics",
+]

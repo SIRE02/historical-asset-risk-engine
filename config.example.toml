@@ -29,7 +29,7 @@ instrument_registry_path = "examples/data/instrument_registry.csv"
 positions_path = "examples/data/positions_market.csv"
 cash_path = "examples/data/cash_market.csv"
 
-# Phase 5: 99% one-day tail risk, a trailing window of ~one year, and a
+# Tail risk: 99% one-day tail risk, a trailing window of ~one year, and a
 # three-scenario stress catalog covering all four instruments.
 tail_risk_confidence_level = 0.99
 tail_risk_window = 252

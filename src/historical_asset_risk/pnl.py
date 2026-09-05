@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 
 from historical_asset_risk.contracts import (
-    PHASE4_SCHEMA_VERSION,
+    PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     Instrument,
     PortfolioReturnAlignmentError,
 )
@@ -164,7 +164,7 @@ class AlignedPortfolioReturns:
                         "return_type": self.return_type,
                         "data_snapshot_id": self.data_snapshot_id,
                         "simple_return": float(value),
-                        "schema_version": PHASE4_SCHEMA_VERSION,
+                        "schema_version": PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
                     }
                 )
         return pd.DataFrame(rows)

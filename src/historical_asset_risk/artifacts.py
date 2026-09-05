@@ -19,9 +19,8 @@ from historical_asset_risk.contracts import (
     HYPOTHETICAL_PNL_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_VERSION,
-    PHASE4_SCHEMA_VERSION,
-    PHASE5_SCHEMA_VERSION,
     PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
+    PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
     PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS,
     PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID,
@@ -44,6 +43,7 @@ from historical_asset_risk.contracts import (
     STRESS_CONTRIBUTIONS_SCHEMA_ID,
     STRESS_TEST_RESULTS_COLUMNS,
     STRESS_TEST_RESULTS_SCHEMA_ID,
+    TAIL_ANALYTICS_SCHEMA_VERSION,
     TAIL_RISK_COMPARISON_COLUMNS,
     TAIL_RISK_COMPARISON_SCHEMA_ID,
     TRAILING_TAIL_RISK_COLUMNS,
@@ -172,71 +172,71 @@ ARTIFACT_SCHEMAS: dict[str, tuple[str, str]] = {
     ),
     "portfolio_aligned_simple_returns.csv": (
         PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "hypothetical_portfolio_pnl.csv": (
         HYPOTHETICAL_PNL_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "proxy_realized_portfolio_pnl.csv": (
         PROXY_REALIZED_PNL_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "risk_realizations.csv": (
         RISK_REALIZATIONS_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_simple_return_covariance.csv": (
         SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_simple_return_correlation.csv": (
         SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "simple_return_summary.csv": (
         SIMPLE_RETURN_SUMMARY_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_risk_summary.csv": (
         PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_risk_contributions.csv": (
         PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_concentration_summary.csv": (
         PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
-        PHASE4_SCHEMA_VERSION,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_value_at_risk.csv": (
         PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_expected_shortfall.csv": (
         PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
     "portfolio_expected_shortfall_tail_weights.csv": (
         EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
     "tail_risk_comparison.csv": (
         TAIL_RISK_COMPARISON_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
     "trailing_portfolio_tail_risk.csv": (
         TRAILING_TAIL_RISK_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
     "stress_test_results.csv": (
         STRESS_TEST_RESULTS_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
     "stress_contributions.csv": (
         STRESS_CONTRIBUTIONS_SCHEMA_ID,
-        PHASE5_SCHEMA_VERSION,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
     ),
 }
 ARTIFACT_UNITS: dict[str, str] = {
@@ -330,12 +330,12 @@ _STRICT_OUTPUT_COLUMNS = {
     "validated_positions.csv": _VALIDATED_POSITION_OUTPUT_COLUMNS,
     "portfolio_valuation.csv": _PORTFOLIO_VALUATION_OUTPUT_COLUMNS,
     "portfolio_exposure_summary.csv": _PORTFOLIO_EXPOSURE_OUTPUT_COLUMNS,
-    # Frozen Phase 4 portfolio-loss and realization contract (Phase 5 depends
-    # on these; the column set and order must not drift while Phase 5 lands).
+    # Frozen portfolio-loss and realization contract (the tail-risk layer
+    # depends on these; the column set and order must not drift).
     "hypothetical_portfolio_pnl.csv": HYPOTHETICAL_PNL_COLUMNS,
     "proxy_realized_portfolio_pnl.csv": PROXY_REALIZED_PNL_COLUMNS,
     "risk_realizations.csv": RISK_REALIZATIONS_COLUMNS,
-    # Frozen Phase 5 tail-risk and stress contract (Phase 6 depends on these).
+    # Frozen tail-risk and stress contract.
     "portfolio_value_at_risk.csv": PORTFOLIO_VALUE_AT_RISK_COLUMNS,
     "portfolio_expected_shortfall.csv": PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS,
     "portfolio_expected_shortfall_tail_weights.csv": (

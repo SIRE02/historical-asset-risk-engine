@@ -1,8 +1,8 @@
-# Phase 3 - Portfolio contract, valuation, and exposure
+# Portfolio contract, valuation, and exposure
 
 Released in `v0.1.0`. Defines exactly what a portfolio is before any P&L or
 risk calculation. One immutable snapshot is processed at a time; a collection
-of snapshots (Phase 4-5 histories) reuses this same row schema.
+of snapshots (P&L and tail-risk histories) reuses this same row schema.
 
 ## Input contracts
 

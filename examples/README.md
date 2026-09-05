@@ -27,7 +27,7 @@ python -m pip install dist/historical_asset_risk_engine-*.whl
 ## Run
 
 ```
-# Offline long/short book + Phase 5 tail risk and stress
+# Offline long/short book + tail risk and stress
 historical-asset-risk --config examples/config.long_short.toml
 
 # Offline long-only book
@@ -38,8 +38,8 @@ historical-asset-risk --config config.example.toml
 ```
 
 Each run writes to its own `output_dir`: the frozen return artifacts, the
-Phase 3 valuation and exposure tables, the Phase 4 P&L / covariance / Euler
-artifacts, and the Phase 5 VaR / ES / comparison / stress artifacts, plus the
+valuation and exposure tables, the P&L / covariance / Euler artifacts, and
+the VaR / ES / comparison / stress artifacts, plus the
 `run_manifest.json` and `data_quality_report.json` lineage records.
 
 A returns-only run needs no portfolio files and writes only the descriptive

@@ -4,6 +4,32 @@ All notable changes to `historical-asset-risk-engine`. The project uses
 semantic versioning; while the version is `0.x`, minor bumps may add contracts
 but do not change the meaning of a frozen consumer artifact.
 
+## Unreleased
+
+### Changed
+
+- **Renamed the two orchestration modules after what they compute rather than
+  when they were built.** `phase4` -> `portfolio_analytics` and `phase5` ->
+  `tail_analytics`, with `compute_phase4` / `Phase4Result` ->
+  `compute_portfolio_analytics` / `PortfolioAnalyticsResult` and
+  `compute_phase5` / `Phase5Result` -> `compute_tail_analytics` /
+  `TailAnalyticsResult`. These were never part of the frozen public surface
+  (`historical_asset_risk.__all__` is unchanged), so no released contract moves.
+- `contracts.PHASE4_SCHEMA_VERSION` -> `PORTFOLIO_ANALYTICS_SCHEMA_VERSION` and
+  `PHASE5_SCHEMA_VERSION` -> `TAIL_ANALYTICS_SCHEMA_VERSION`. The values stay
+  `1.experimental`; no emitted `schema_version` value changes.
+- **Experimental report keys renamed.** `run_manifest.json` sections
+  `portfolio_phase4` / `portfolio_phase5` are now `portfolio_analytics` /
+  `tail_analytics`, and `data_quality_report.json` sections
+  `portfolio.phase4` / `portfolio.phase5` are now `portfolio.analytics` /
+  `portfolio.tail`. These sections were added as `experimental` in 0.2.0; the
+  frozen `v0.1.1` manifest and quality-report keys are untouched. Consumers
+  reading the 0.2.0 names must update.
+- Artifact filenames, schema ids, column sets, units, and loss signs are
+  unchanged; every artifact is byte-identical apart from the two report files.
+- Methodology pages and the CLI run summary no longer label layers by build
+  phase.
+
 ## 0.2.0
 
 Public package freeze. Phases 4 and 5 are complete and their contracts are

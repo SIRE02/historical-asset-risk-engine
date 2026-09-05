@@ -1,4 +1,4 @@
-# Phases 1-2 - Descriptive asset-risk statistics
+# Descriptive asset-risk statistics
 
 Released in `v0.1.0`. These operate on the validated adjusted-price matrix and
 use daily **log** returns unless noted. All are pure functions on the public
@@ -42,7 +42,7 @@ The highest and lowest unique correlation pairs are reported.
 
 - **Artifacts:** `correlation_matrix.csv`, `covariance_matrix.csv`,
   `rolling_correlation.csv`, `rolling_covariance.csv` (+ heatmap). The
-  log-return covariance is descriptive and is **not** reused as the Phase 4
+  log-return covariance is descriptive and is **not** reused as the
   simple-return P&L covariance.
 
 ## Distribution statistics

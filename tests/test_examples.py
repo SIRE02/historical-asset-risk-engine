@@ -72,4 +72,4 @@ def test_offline_portfolio_examples_run_from_repo_root(
         "run_manifest.json",
     }.issubset(names)
     manifest = json.loads((tmp_path / "out" / "run_manifest.json").read_text())
-    assert manifest["portfolio_phase5"]["stress"]["scenario_count"] == 3
+    assert manifest["tail_analytics"]["stress"]["scenario_count"] == 3

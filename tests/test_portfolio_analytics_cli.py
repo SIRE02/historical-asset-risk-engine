@@ -1,4 +1,4 @@
-"""Offline end-to-end Phase 4 portfolio P&L and risk workflow test."""
+"""Offline end-to-end portfolio P&L and risk workflow test."""
 
 from __future__ import annotations
 
@@ -138,7 +138,9 @@ def _stub_charts(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def test_phase4_book_run_emits_reconciled_pnl_and_risk(tmp_path: Path) -> None:
+def test_portfolio_analytics_book_run_emits_reconciled_pnl_and_risk(
+    tmp_path: Path,
+) -> None:
     output_dir = tmp_path / "outputs"
     cli.run_analysis(_base_config(tmp_path, output_dir, portfolio=True))
 
@@ -174,17 +176,17 @@ def test_phase4_book_run_emits_reconciled_pnl_and_risk(tmp_path: Path) -> None:
     assert covariance["instrument_id"].tolist() == ["US_SPY", "US_QQQ"]
 
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
-    phase4 = manifest["portfolio_phase4"]
-    assert phase4["covariance"]["ddof"] == 1
-    assert phase4["covariance"]["shrinkage"] == "none"
-    assert phase4["distinct_from"]["log_return_covariance_artifact"] == (
+    portfolio_analytics = manifest["portfolio_analytics"]
+    assert portfolio_analytics["covariance"]["ddof"] == 1
+    assert portfolio_analytics["covariance"]["shrinkage"] == "none"
+    assert portfolio_analytics["distinct_from"]["log_return_covariance_artifact"] == (
         "covariance_matrix.csv"
     )
     assert "portfolio_risk_summary.csv" in manifest["artifact_schemas"]
 
     quality = json.loads((output_dir / "data_quality_report.json").read_text())
-    assert quality["portfolio"]["phase4"]["component_volatility_reconciles"] is True
-    assert quality["portfolio"]["phase4"]["proxy_realized_pnl_available"] is False
+    assert quality["portfolio"]["analytics"]["component_volatility_reconciles"] is True
+    assert quality["portfolio"]["analytics"]["proxy_realized_pnl_available"] is False
 
     loaded = load_artifact(
         output_dir / "hypothetical_portfolio_pnl.csv",
@@ -192,7 +194,7 @@ def test_phase4_book_run_emits_reconciled_pnl_and_risk(tmp_path: Path) -> None:
     )
     assert "hypothetical_pnl" in loaded.columns
 
-    # The simple-return covariance stays a distinct artifact from the Phase 2
+    # The simple-return covariance stays a distinct artifact from the descriptive
     # log-return covariance: different schema id, different values.
     schemas = manifest["artifact_schemas"]
     assert (
@@ -227,15 +229,15 @@ def test_proxy_realized_history_emits_realization_identity(tmp_path: Path) -> No
     assert set(realizations["outcome_status"]) == {"realized"}
 
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
-    realization_meta = manifest["portfolio_phase4"]["realizations"]
+    realization_meta = manifest["portfolio_analytics"]["realizations"]
     assert realization_meta["status"] == "computed"
     assert realization_meta["realized_count"] == 2
     assert "predicted_loss" in realization_meta["downstream_forecast_join_fields"]
     quality = json.loads((output_dir / "data_quality_report.json").read_text())
-    assert quality["portfolio"]["phase4"]["proxy_realized_pnl_available"] is True
+    assert quality["portfolio"]["analytics"]["proxy_realized_pnl_available"] is True
 
 
-def test_returns_only_run_writes_no_phase4_files(tmp_path: Path) -> None:
+def test_returns_only_run_writes_no_portfolio_analytics_files(tmp_path: Path) -> None:
     output_dir = tmp_path / "returns_only"
     cli.run_analysis(_base_config(tmp_path, output_dir, portfolio=False))
 
@@ -246,10 +248,10 @@ def test_returns_only_run_writes_no_phase4_files(tmp_path: Path) -> None:
         for name in names
     )
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
-    assert "portfolio_phase4" not in manifest
+    assert "portfolio_analytics" not in manifest
 
 
-def test_frozen_consumer_return_artifacts_are_unchanged_by_phase4(
+def test_frozen_consumer_return_artifacts_are_unchanged_by_portfolio_analytics(
     tmp_path: Path,
 ) -> None:
     with_book = tmp_path / "with_book"

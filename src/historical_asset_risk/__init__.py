@@ -3,9 +3,9 @@
 Everything re-exported here is a supported, versioned contract: the pure
 calculation functions, their result and input dataclasses, the artifact schema
 registry, and ``load_artifact``. Providers, plotting, run orchestration
-(``compute_phase4`` / ``compute_phase5`` / ``cli.run_analysis``), and the
-command-line entry point are deliberately not part of this surface; import them
-from their submodules if you need them.
+(``compute_portfolio_analytics`` / ``compute_tail_analytics`` /
+``cli.run_analysis``), and the command-line entry point are deliberately not
+part of this surface; import them from their submodules if you need them.
 """
 
 from __future__ import annotations

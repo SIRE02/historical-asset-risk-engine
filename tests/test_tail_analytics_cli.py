@@ -1,4 +1,4 @@
-"""Offline end-to-end Phase 5 tail-risk and stress workflow test."""
+"""Offline end-to-end tail-risk and stress workflow test."""
 
 from __future__ import annotations
 
@@ -165,7 +165,7 @@ def _stub_charts(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def test_phase5_emits_reconciled_var_es_and_stress(tmp_path: Path) -> None:
+def test_tail_analytics_emits_reconciled_var_es_and_stress(tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
     cli.run_analysis(_config(tmp_path, output_dir, portfolio=True, stress=True))
 
@@ -199,12 +199,12 @@ def test_phase5_emits_reconciled_var_es_and_stress(tmp_path: Path) -> None:
     assert contributions["scenario_pnl"].sum() == pytest.approx(-75.0)
 
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
-    phase5 = manifest["portfolio_phase5"]
-    assert phase5["confidence_level"] == 0.9
-    assert phase5["quantile_method"] == "generalized_inverse_empirical_cdf"
-    assert phase5["stress"]["probability_fields"] == "none"
+    tail_analytics = manifest["tail_analytics"]
+    assert tail_analytics["confidence_level"] == 0.9
+    assert tail_analytics["quantile_method"] == "generalized_inverse_empirical_cdf"
+    assert tail_analytics["stress"]["probability_fields"] == "none"
     quality = json.loads((output_dir / "data_quality_report.json").read_text())
-    assert quality["portfolio"]["phase5"]["es_ge_var"] is True
+    assert quality["portfolio"]["tail"]["es_ge_var"] is True
 
 
 def test_descriptive_quantile_method_does_not_change_canonical_var(
@@ -233,10 +233,10 @@ def test_trailing_tail_risk_series_is_keyed_by_as_of_date(tmp_path: Path) -> Non
     counts = trailing.set_index("as_of_date")["window_observation_count"]
     assert counts["2024-01-09"] >= counts["2024-01-05"]
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
-    assert manifest["portfolio_phase5"]["trailing"]["not_a_forecast_store"] is True
+    assert manifest["tail_analytics"]["trailing"]["not_a_forecast_store"] is True
 
 
-def test_returns_only_run_writes_no_phase5_files(tmp_path: Path) -> None:
+def test_returns_only_run_writes_no_tail_analytics_files(tmp_path: Path) -> None:
     output_dir = tmp_path / "returns_only"
     cli.run_analysis(_config(tmp_path, output_dir, portfolio=False))
     names = {p.name for p in output_dir.iterdir()}
@@ -252,4 +252,4 @@ def test_returns_only_run_writes_no_phase5_files(tmp_path: Path) -> None:
         for n in names
     )
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
-    assert "portfolio_phase5" not in manifest
+    assert "tail_analytics" not in manifest

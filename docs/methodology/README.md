@@ -10,16 +10,16 @@ diagnostics. Those belong to consuming research projects.
 
 | Page | Scope |
 | --- | --- |
-| [Descriptive statistics](descriptive-statistics.md) | Phase 1-2: returns, volatility, correlation, distribution statistics |
-| [Portfolio contract](portfolio-contract.md) | Phase 3: valuation, exposure, weights, snapshot identity |
-| [P&L and covariance risk](pnl-and-covariance-risk.md) | Phase 4: hypothetical and proxy realized P&L, simple-return covariance, Euler contributions, realization identity |
-| [Tail risk and stress](tail-risk-and-stress.md) | Phase 5: historical and normal VaR/ES, trailing book series, named stress |
+| [Descriptive statistics](descriptive-statistics.md) | Returns, volatility, correlation, distribution statistics |
+| [Portfolio contract](portfolio-contract.md) | Valuation, exposure, weights, snapshot identity |
+| [P&L and covariance risk](pnl-and-covariance-risk.md) | Hypothetical and proxy realized P&L, simple-return covariance, Euler contributions, realization identity |
+| [Tail risk and stress](tail-risk-and-stress.md) | Historical and normal VaR/ES, trailing book series, named stress |
 
 ## Cross-cutting conventions
 
-- **Return construction.** Asset-level descriptive statistics (Phases 1-2) use
-  daily **log** returns. Portfolio P&L, covariance, and tail risk (Phases 4-5)
-  use daily **simple** returns, because currency P&L aggregates linearly as
+- **Return construction.** Asset-level descriptive statistics use daily **log**
+  returns. Portfolio P&L, covariance, and tail risk use daily **simple**
+  returns, because currency P&L aggregates linearly as
   `exposure * simple_return`. The two return artifacts are always distinct.
 - **Loss sign.** Loss is positive: `loss = -pnl`. Every output declares its
   units (return, currency, variance, volatility, correlation, probability, or
@@ -30,8 +30,8 @@ diagnostics. Those belong to consuming research projects.
   after `as_of_date`.
 - **No silent repair.** Missing, stale, or invalid data fails against an
   explicit policy. Nothing is forward-filled, proxied, or substituted quietly.
-- **Schema versions.** Every schema introduced from Phase 3 onward carries an
-  `experimental` version. Frozen `v0.1.1` consumer files
+- **Schema versions.** Every schema introduced after the `v0.1.1` handoff
+  carries an `experimental` version. Frozen `v0.1.1` consumer files
   (`adjusted_prices.csv`, `simple_returns.csv`, `log_returns.csv`,
   `data_quality_report.json`, `run_manifest.json`) keep their meaning, columns,
   units, schema id, and version.

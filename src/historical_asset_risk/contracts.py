@@ -20,10 +20,10 @@ PORTFOLIO_EXPOSURE_SCHEMA_ID = "historical-asset-risk/portfolio-exposure-summary
 PORTFOLIO_EXPOSURE_SCHEMA_VERSION = "1.experimental"
 EXPOSURE_SNAPSHOT_SCHEMA_VERSION = "1.experimental"
 
-# --- Phase 4: portfolio P&L, aggregation, and realizations ---------------------
+# --- Portfolio analytics: P&L, aggregation, and realizations -------------------
 # Simple-return artifacts are deliberately distinct in schema id and units from
-# the Phase 2 log-return covariance/correlation descriptive artifacts.
-PHASE4_SCHEMA_VERSION = "1.experimental"
+# the descriptive log-return covariance/correlation artifacts.
+PORTFOLIO_ANALYTICS_SCHEMA_VERSION = "1.experimental"
 PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID = (
     "historical-asset-risk/portfolio-aligned-simple-returns"
 )
@@ -49,9 +49,9 @@ PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID = (
 )
 
 # Frozen column contracts for the portfolio-loss and realization artifacts that
-# Phase 5 tail-risk and stress work builds on. The schema version stays
-# ``experimental`` (Phase 6 owns promotion), but the column set, order, units,
-# and loss sign of these three files must not change while Phase 5 is written.
+# the tail-risk and stress layer builds on. The schema version stays
+# ``experimental`` pending promotion, but the column set, order, units, and
+# loss sign of these three files must not change.
 HYPOTHETICAL_PNL_COLUMNS: tuple[str, ...] = (
     "portfolio_snapshot_id",
     "exposure_snapshot_id",
@@ -90,8 +90,8 @@ PROXY_REALIZED_PNL_COLUMNS: tuple[str, ...] = (
     "calculation_version",
     "schema_version",
 )
-# --- Phase 5: tail risk and stress -------------------------------------------
-PHASE5_SCHEMA_VERSION = "1.experimental"
+# --- Tail analytics: tail risk and stress -------------------------------------
+TAIL_ANALYTICS_SCHEMA_VERSION = "1.experimental"
 PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID = "historical-asset-risk/portfolio-value-at-risk"
 PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID = (
     "historical-asset-risk/portfolio-expected-shortfall"
@@ -119,9 +119,9 @@ RISK_REALIZATIONS_COLUMNS: tuple[str, ...] = (
     "schema_version",
 )
 
-# Frozen column contracts for the Phase 5 tail-risk and stress artifacts. The
-# schema version stays experimental (Phase 6 owns promotion), but these column
-# sets, orders, and loss sign must not drift while Phase 6 lands.
+# Frozen column contracts for the tail-risk and stress artifacts. The schema
+# version stays experimental pending promotion, but these column sets, orders,
+# and loss sign must not drift.
 _TAIL_IDENTITY = (
     "portfolio_snapshot_id",
     "exposure_snapshot_id",
@@ -424,10 +424,10 @@ __all__ = [
     "ArtifactSchemaError",
     "HYPOTHETICAL_PNL_COLUMNS",
     "HYPOTHETICAL_PNL_SCHEMA_ID",
-    "PHASE4_SCHEMA_VERSION",
+    "PORTFOLIO_ANALYTICS_SCHEMA_VERSION",
     "EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS",
     "EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID",
-    "PHASE5_SCHEMA_VERSION",
+    "TAIL_ANALYTICS_SCHEMA_VERSION",
     "PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS",
     "PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID",
     "PORTFOLIO_VALUE_AT_RISK_COLUMNS",

@@ -1,6 +1,6 @@
-# Phase 5 - Tail risk and stress
+# Tail risk and stress
 
-These estimators measure the tail of the released Phase 4 portfolio-loss
+These estimators measure the tail of the released portfolio-loss
 sample and apply named shocks to the same book. They are static
 bounded-sample measurements: no coverage tests, no research splits, no
 next-session forecast records. One-day horizon in the initial release.
@@ -20,7 +20,7 @@ VaR_alpha(L) = L_(ceil(n * alpha))
 
 - **Units:** loss units of the dimension. **Sign:** loss positive; a negative
   VaR stays negative and is never floored at zero.
-- The Phase 2 descriptive `quantile_method` is an asset-level statistic and
+- The descriptive `quantile_method` is an asset-level statistic and
   does **not** redefine risk VaR.
 - Reports `observation_count`, the order-statistic rank, and a
   small-tail warning when `n * (1 - alpha) < 1`.
@@ -109,9 +109,10 @@ scenario_loss[i] = -scenario_pnl[i]
 ## Tests
 
 `tests/test_tail_risk.py`, `tests/test_stress.py`,
-`tests/test_phase5_cli.py`, `tests/test_phase5_freeze.py`: hand-calculated
+`tests/test_tail_analytics_cli.py`, `tests/test_tail_analytics_freeze.py`:
+hand-calculated
 VaR / fractionally weighted ES on small ordered samples; constant, all-gain,
 and single-outlier fixtures; confidence-level monotonicity; `ES >= VaR`;
 normal formulas against an independent derivation; next-session trailing
 alignment; zero-shock and short-exposure stress; scenario content-hash
-rejection of mutated content; frozen Phase 5 column contracts.
+rejection of mutated content; frozen tail-analytics column contracts.

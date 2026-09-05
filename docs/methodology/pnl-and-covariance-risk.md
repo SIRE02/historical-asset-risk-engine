@@ -1,7 +1,6 @@
-# Phase 4 - Portfolio P&L and simple-return covariance risk
+# Portfolio P&L and simple-return covariance risk
 
-All estimators here consume a validated Phase 3 book and the Phase 1
-`simple_returns` matrix. They are pure functions (`historical_asset_risk`
+All estimators here consume a validated book and the `simple_returns` matrix. They are pure functions (`historical_asset_risk`
 public API); the CSV artifacts are optional and written only when a book is
 present. `simple_returns.csv` is never rewritten.
 
@@ -36,7 +35,7 @@ hypothetical_loss[s | t] = -hypothetical_pnl[s | t]
 
 ## Proxy realized P&L and realization identity
 
-Given an ordered history of dated Phase 3 snapshots
+Given an ordered history of dated snapshots
 (`--positions-history-path` / `--cash-history-path`):
 
 ```
@@ -62,15 +61,15 @@ missing a held instrument's return are reported with a non-`realized`
 ## Simple-return covariance and companions
 
 `sample_simple_return_covariance` is the sample covariance (`ddof = 1`) of the
-aligned simple-return matrix. It is a **distinct artifact** from the Phase 2
-log-return `covariance_matrix.csv`: different schema id, different units
+aligned simple-return matrix. It is a **distinct artifact** from the
+descriptive log-return `covariance_matrix.csv`: different schema id, different units
 (`daily_simple_return_squared`).
 
 - Sibling `simple_return_correlation` on the same sample; undefined for a
   constant series (fails rather than emitting NaN).
 - `simple_return_summary`: count, mean, std, min, max per instrument.
 - `compound_simple_returns`: `product(1 + r) - 1` over an explicit session
-  range - the multi-session shock helper Phase 5 stress uses.
+  range - the multi-session shock helper the stress layer uses.
 - No shrinkage, EWMA, GARCH, or DCC. Sigma is never annualized or projected
   silently. A singular / ill-conditioned matrix is flagged, not repaired.
 - **Artifacts:** `portfolio_simple_return_covariance.csv`,
@@ -115,9 +114,10 @@ percentage_component[i]     = component_volatility[i] / portfolio_volatility
 ## Tests
 
 `tests/test_pnl.py`, `tests/test_portfolio_risk.py`,
-`tests/test_phase4_cli.py`, `tests/test_phase4_freeze.py`: hand-calculated
+`tests/test_portfolio_analytics_cli.py`,
+`tests/test_portfolio_analytics_freeze.py`: hand-calculated
 one- and two-asset P&L / Sigma / volatility / Euler; long/short with a negative
 hedge; cash-only; perfect +/-1 correlation and singular Sigma; zero-volatility
 no-division; missing held instrument fails while extra tickers are ignored;
 instrument reordering leaves totals unchanged; next-session proxy alignment;
-frozen consumer and Phase 4 column contracts.
+frozen consumer and portfolio-analytics column contracts.
