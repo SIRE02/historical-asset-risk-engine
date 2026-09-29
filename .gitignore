@@ -24,6 +24,7 @@ tmp/
 # Working notes and project conventions stay private; methodology pages ship.
 /docs/*
 !/docs/methodology/
+CLAUDE.md
 
 # Local environment variables
 .env
