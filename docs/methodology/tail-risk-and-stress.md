@@ -36,6 +36,10 @@ ES_alpha(L) = (sum of the largest k losses + delta * L_(n - k)) / m
 ```
 
 - The sum is empty when `k = 0`.
+- `m`, `k`, `delta` and the VaR rank `ceil(n * alpha)` are computed in exact
+  rational arithmetic on `alpha` as written (`0.99` is `99/100`). In binary
+  floating point `100 * (1 - 0.99)` is `1.0000000000000009`, which would make
+  `floor` / `ceil` misreport the tail by a whole observation.
 - The reported `tail_contributions` weights (`1 / m` on each of the `k` largest
   losses, `delta / m` on `L_(n - k)`) always sum to one and are written to
   `portfolio_expected_shortfall_tail_weights.csv` so ES is auditable.

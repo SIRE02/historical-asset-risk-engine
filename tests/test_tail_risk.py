@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import statistics
+from fractions import Fraction
 
 import pytest
 
@@ -69,6 +71,58 @@ def test_es_tail_contribution_weights_sum_to_one() -> None:
     assert result.contributing_observation_count == 2
     ranks = {item.order_statistic_rank for item in result.tail_contributions}
     assert ranks == {9, 10}
+
+
+@pytest.mark.parametrize(
+    ("n", "alpha", "k", "delta", "ranks"),
+    [
+        # m is an exact integer, but n * (1 - alpha) lands just below it.
+        (10, 0.80, 2, 0.0, {9, 10}),
+        # m is an exact integer, but n * (1 - alpha) lands just above it.
+        (100, 0.99, 1, 0.0, {100}),
+        (20, 0.95, 1, 0.0, {20}),
+        (500, 0.99, 5, 0.0, {496, 497, 498, 499, 500}),
+        # A genuine fractional boundary is kept.
+        (250, 0.99, 2, 0.5, {248, 249, 250}),
+    ],
+)
+def test_es_audit_fields_are_exact_at_integer_tail_mass(
+    n: int, alpha: float, k: int, delta: float, ranks: set[int]
+) -> None:
+    result = historical_es(range(n), alpha)
+    m = k + delta
+    assert result.nominal_tail_observations == m
+    assert result.full_tail_count == k
+    assert result.boundary_weight == delta
+    assert result.contributing_observation_count == len(ranks)
+    assert {c.order_statistic_rank for c in result.tail_contributions} == ranks
+    full = [c for c in result.tail_contributions if c.order_statistic_rank > n - k]
+    assert all(c.weight == 1.0 / m for c in full)
+
+
+def test_var_rank_and_es_fields_match_exact_rational_arithmetic() -> None:
+    for alpha in (0.9, 0.95, 0.975, 0.99, 0.995, 0.999):
+        exact_alpha = Fraction(str(alpha))
+        for n in range(20, 1001):
+            exact_m = n * (1 - exact_alpha)
+            exact_k = math.floor(exact_m)
+            exact_delta = exact_m - exact_k
+            case = f"n={n}, alpha={alpha}"
+
+            var = historical_var(range(n), alpha)
+            es = historical_es(range(n), alpha)
+
+            assert var.order_statistic_rank == math.ceil(n * exact_alpha), case
+            assert es.full_tail_count == exact_k, case
+            assert es.boundary_weight == float(exact_delta), case
+            assert es.contributing_observation_count == exact_k + (exact_delta > 0), (
+                case
+            )
+            # The ES boundary observation is the VaR observation.
+            if exact_delta > 0:
+                assert es.tail_contributions[-1].order_statistic_rank == (
+                    var.order_statistic_rank
+                ), case
 
 
 def test_constant_losses_give_equal_var_and_es() -> None:
