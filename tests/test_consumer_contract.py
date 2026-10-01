@@ -1,6 +1,6 @@
 """Frozen-consumer contract: the v0.1.1 handoff must not change.
 
-MRFE, NMARE, and WFEA consume these files and loader rules. Later work may add
+Downstream consumers read these files and loader rules. Later work may add
 artifacts and APIs; it may not change the schema id, version, units, or
 required columns of the frozen set, and a returns-only run must still produce
 it without a portfolio book.
