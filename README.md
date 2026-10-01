@@ -61,7 +61,8 @@ python -m pip install --no-deps --no-build-isolation -e .
 ```
 
 `environment.yml` installs the exact Python resolution in `requirements.lock`.
-CI follows these same steps so the documented setup is continuously tested.
+CI installs the same `requirements.lock` and the package the same way, so the
+documented setup is continuously tested.
 
 ## Quick start
 
@@ -184,7 +185,7 @@ The CSV must be in long form. Additional columns are ignored.
 | --- | --- |
 | `date` | Parseable date satisfying `start_date <= date < end_date` |
 | `ticker` | Symbol; trimmed and normalized to uppercase |
-| `adjusted_close` | Numeric adjusted close greater than zero |
+| `adjusted_close` | Finite numeric adjusted close greater than zero |
 
 Do not place raw closes in `adjusted_close`; the engine cannot reconstruct
 provider-specific split or distribution adjustments.
@@ -250,7 +251,7 @@ Passing `--positions-history-path` and `--cash-history-path` (an ordered
 collection of dated book snapshots, same row schema) additionally writes
 `proxy_realized_portfolio_pnl.csv` and the versioned `risk_realizations.csv`
 identity that a downstream forecasting engine can join its own predictions to.
-HARE does not generate forecasts or run coverage tests.
+The engine does not generate forecasts or run coverage tests.
 
 Portfolio runs also measure the tail of that released loss sample:
 
@@ -266,8 +267,11 @@ Portfolio runs also measure the tail of that released loss sample:
   at each `as_of_date` from that day's snapshot; a risk report, not a forecast
 
 Set `--tail-risk-confidence-level` (default 0.95) and `--tail-risk-window`.
-The headline VaR/ES always use the full aligned sample; the window shortens
-only the trailing series.
+The headline VaR/ES always use the full aligned sample, which can include dates
+after the book's `as_of_date`: they describe today's book replayed over the
+whole sample, not risk known on that date. The window shortens only the
+trailing series, which uses intervals ending no later than each snapshot's
+`as_of_date`.
 Passing `--stress-catalog-path` (a hash-verified scenario catalog JSON) applies
 named `instrument_id` simple-return shocks to the current book and writes
 `stress_scenario_catalog.json`, `stress_test_results.csv`, and
@@ -558,13 +562,13 @@ python -m ruff format --check .
 python -m ruff check .
 python -m mypy
 python -m pytest -q
-python -m build
+python -m build --no-isolation
 ```
 
-The suite covers calculations, rolling boundaries, no-look-ahead behavior,
-alignment, Yahoo/CSV equivalence, reports, portfolio valuation, P&L, covariance
-risk, VaR/ES, stress, frozen schema contracts, the public API surface,
-packaging, clean installation, and the installed CLI.
+The suite covers calculations, rolling boundaries, trailing-window
+no-look-ahead behavior, alignment, Yahoo/CSV equivalence, reports, portfolio
+valuation, P&L, covariance risk, VaR/ES, stress, frozen schema contracts, the
+public API surface, packaging, clean installation, and the installed CLI.
 
 Version history is in [CHANGELOG.md](CHANGELOG.md); methodology per estimator is
 in [`docs/methodology/`](docs/methodology/README.md).
