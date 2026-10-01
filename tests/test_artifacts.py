@@ -23,7 +23,7 @@ from historical_asset_risk.contracts import (
 )
 
 
-def test_phase3_csv_parsers_preserve_lineage_and_reject_unknown_columns(
+def test_book_csv_parsers_preserve_lineage_and_reject_unknown_columns(
     tmp_path: Path,
 ) -> None:
     registry_path = tmp_path / "registry.csv"

@@ -3,27 +3,39 @@
 A Python CLI and reusable package for reproducible historical market-risk
 analysis. It validates adjusted daily prices for two or more assets, calculates
 returns and risk statistics, and writes tables, charts, quality evidence, and
-source lineage. It can also value a portfolio from explicit instrument, position,
-and cash records.
+source lineage. Given an explicit instrument, position, and cash book it also
+values the portfolio and measures its risk: hypothetical and proxy realized
+P&L, simple-return covariance with Euler contributions, historical and normal
+Value at Risk / Expected Shortfall, and named stress scenarios.
 
-Results describe a historical sample. They are not forecasts or investment advice.
+Results describe a historical sample. They are not forecasts or investment
+advice. The engine does not forecast, optimize, trade, or run risk-model
+coverage tests.
 
 ## Capabilities
 
 - Yahoo Finance and local CSV market-data providers
-- Simple and logarithmic returns
-- Distribution summaries and daily/annualized volatility
-- Multi-asset covariance and Pearson correlation
-- Trailing volatility, covariance, and correlation
-- Data-quality reports and reproducible run manifests
+- Simple and logarithmic returns; distribution summaries; daily and annualized
+  volatility
+- Multi-asset covariance and Pearson correlation, plus trailing versions
 - Optional portfolio valuation, weights, and exposure measures
+- Portfolio P&L: hypothetical historical simulation and proxy realized P&L with
+  a versioned realization identity
+- Simple-return covariance risk with Euler marginal, component, and percentage
+  contributions
+- Historical and normal-parametric VaR and Expected Shortfall in return and
+  currency terms, with an optional trailing book series
+- Named historical or hypothetical stress scenarios, hash-verified and carrying
+  no probability
+- Data-quality reports and reproducible run manifests
 - CLI and importable Python APIs
 
 ```text
-adjusted prices -> validation and alignment -> returns -> risk estimates
-                                                         |
-                                                         v
-                             tables, charts, quality report, manifest
+adjusted prices -> validation and alignment -> returns -> descriptive risk estimates
+optional book   -> valuation -> P&L -> simple-return covariance -> VaR / ES / stress
+                                             |
+                                             v
+                         tables, charts, quality report, manifest
 ```
 
 Adjusted prices prevent splits and cash distributions from appearing as ordinary
@@ -49,7 +61,8 @@ python -m pip install --no-deps --no-build-isolation -e .
 ```
 
 `environment.yml` installs the exact Python resolution in `requirements.lock`.
-CI follows these same steps so the documented setup is continuously tested.
+CI installs the same `requirements.lock` and the package the same way, so the
+documented setup is continuously tested.
 
 ## Quick start
 
@@ -59,11 +72,22 @@ Run the four-asset Yahoo Finance example:
 historical-asset-risk --config config.example.toml
 ```
 
-It analyzes `SPY`, `QQQ`, `TLT`, and `GLD` from 2021 through 2024 with a
-21-observation rolling window, values the bundled synthetic portfolio, and writes
-to `outputs/example/`. This run requires network access. `examples/data/` is safe
-to commit; the ignored root `data/` directory is reserved for private or licensed
-user data.
+It analyzes `SPY`, `QQQ`, `TLT`, and `GLD` over their full common history
+(complete-case alignment starts at `GLD`'s November 2004 inception) through
+2024, with a 63-session rolling window. It values a four-instrument long/short
+book (long SPY and QQQ, short TLT, long GLD), runs 99% one-day VaR/ES plus a
+three-scenario stress catalog, and writes to `outputs/example/`. This run
+requires network access.
+`examples/data/` is safe to commit; the ignored root `data/` directory is
+reserved for private or licensed user data.
+
+For an offline end-to-end run with no network, use the bundled synthetic
+examples instead:
+
+```powershell
+historical-asset-risk --config examples/config.long_short.toml
+historical-asset-risk --config examples/config.long_only.toml
+```
 
 Run a Yahoo Finance analysis:
 
@@ -83,24 +107,48 @@ top-level object or an `analysis` object.
 
 ```toml
 [analysis]
-provider = "yahoo"
+provider = "yahoo"                     # or "csv" with csv_path
 tickers = ["SPY", "QQQ", "TLT", "GLD"]
 start_date = "2021-01-01"
-end_date = "2025-01-01"
+end_date = "2025-01-01"                # exclusive
 rolling_window = 21
-rolling_min_observations = 21
+rolling_min_observations = 21          # defaults to rolling_window
 observations_per_year = 252
 quantiles = [0.05, 0.25, 0.75, 0.95]
 quantile_method = "linear"
 downside_target = 0.0
 output_dir = "outputs"
+
+# Optional portfolio book. Supplying all three enables valuation,
+# P&L and covariance risk, and tail risk.
+# instrument_registry_path = "examples/data/instrument_registry.csv"
+# positions_path = "examples/data/positions.csv"
+# cash_path = "examples/data/cash.csv"
+
+# Optional ordered snapshot history -> proxy realized P&L, realization records,
+# and a trailing tail-risk series.
+# positions_history_path = "..."
+# cash_history_path = "..."
+
+# Tail-risk knobs.
+# tail_risk_confidence_level = 0.95    # 0.5 < alpha < 1
+# tail_risk_window = 252               # trailing series only; omit for all prior intervals
+# stress_catalog_path = "examples/stress_catalog.example.json"
 ```
+
+`config.example.toml` is a complete portfolio-plus-tail-risk configuration.
 
 ```powershell
 historical-asset-risk --config analysis.toml
 ```
 
 Precedence is command line, then configuration file, then built-in defaults.
+
+Relative paths written in a configuration file (`csv_path`, `output_dir`, the
+portfolio and history paths, `stress_catalog_path`) resolve against that
+file's folder, so a configuration means the same thing from any working
+directory. Paths given as command-line flags resolve against the directory the
+command runs in.
 
 ## Market-data inputs
 
@@ -137,7 +185,7 @@ The CSV must be in long form. Additional columns are ignored.
 | --- | --- |
 | `date` | Parseable date satisfying `start_date <= date < end_date` |
 | `ticker` | Symbol; trimmed and normalized to uppercase |
-| `adjusted_close` | Numeric adjusted close greater than zero |
+| `adjusted_close` | Finite numeric adjusted close greater than zero |
 
 Do not place raw closes in `adjusted_close`; the engine cannot reconstruct
 provider-specific split or distribution adjustments.
@@ -146,11 +194,16 @@ provider-specific split or distribution adjustments.
 
 - Yahoo and CSV records use the same normalization and validation.
 - Missing, nonnumeric, zero, and negative prices are never filled.
-- Duplicate date/ticker rows keep the last source row and are disclosed.
+- Duplicate date/ticker rows keep the last valid source row and are disclosed.
+  A missing or invalid duplicate never replaces a valid price.
 - A date is retained only when every requested asset has a valid price.
 - Prices are never forward-filled.
 - The run fails if alignment would create a return spanning an intervening
   provider observation date.
+- Portfolio runs also fail unless the aligned price dates are consecutive
+  sessions on the portfolio calendar. This catches a session missing from
+  every ticker, which leaves no provider date to compare against. Returns-only
+  runs have no calendar and get only the provider-date check.
 - Rolling analysis requires at least `rolling_min_observations + 1` aligned prices.
 - The combined return summary requires at least four non-missing log returns per
   asset.
@@ -176,15 +229,63 @@ Yahoo runs add `acquired_adjusted_prices.csv`. Portfolio runs add:
 - `portfolio_valuation.csv`
 - `portfolio_exposure_summary.csv`
 
+Portfolio runs also emit the book P&L and covariance-risk layer:
+
+- `portfolio_aligned_simple_returns.csv` — held-book simple returns aligned by
+  `instrument_id` with explicit intervals
+- `hypothetical_portfolio_pnl.csv` — current-book historical simulation P&L and
+  loss (`loss = -pnl`) over each return interval
+- `portfolio_simple_return_covariance.csv`,
+  `portfolio_simple_return_correlation.csv`,
+  `simple_return_summary.csv` — sample simple-return covariance risk inputs,
+  distinct in schema id and units from the log-return `covariance_matrix.csv`
+- `portfolio_risk_summary.csv` — return- and currency-space variance and
+  volatility from `w' Sigma w` / `x' Sigma x`, with a labeled
+  square-root-of-time annualized volatility
+- `portfolio_risk_contributions.csv` — Euler marginal, component, and percentage
+  volatility contributions; negative hedge contributions are kept, not clipped
+- `portfolio_concentration_summary.csv` — gross weight, Herfindahl, effective
+  names
+
+Passing `--positions-history-path` and `--cash-history-path` (an ordered
+collection of dated book snapshots, same row schema) additionally writes
+`proxy_realized_portfolio_pnl.csv` and the versioned `risk_realizations.csv`
+identity that a downstream forecasting engine can join its own predictions to.
+The engine does not generate forecasts or run coverage tests.
+
+Portfolio runs also measure the tail of that released loss sample:
+
+- `portfolio_value_at_risk.csv` — canonical historical VaR
+  `L_(ceil(n * alpha))`, in return and currency dimensions, never floored at
+  zero. The descriptive `--quantile-method` never redefines this.
+- `portfolio_expected_shortfall.csv` plus
+  `portfolio_expected_shortfall_tail_weights.csv` — exact finite-sample ES with
+  the audit weights that produce it
+- `tail_risk_comparison.csv` — historical VaR/ES beside the mean-included and
+  zero-mean Gaussian benchmarks (a comparison, not a normality claim)
+- `trailing_portfolio_tail_risk.csv` — with an exposure history, VaR/ES rebuilt
+  at each `as_of_date` from that day's snapshot; a risk report, not a forecast
+
+Set `--tail-risk-confidence-level` (default 0.95) and `--tail-risk-window`.
+The headline VaR/ES always use the full aligned sample, which can include dates
+after the book's `as_of_date`: they describe today's book replayed over the
+whole sample, not risk known on that date. The window shortens only the
+trailing series, which uses intervals ending no later than each snapshot's
+`as_of_date`.
+Passing `--stress-catalog-path` (a hash-verified scenario catalog JSON) applies
+named `instrument_id` simple-return shocks to the current book and writes
+`stress_scenario_catalog.json`, `stress_test_results.csv`, and
+`stress_contributions.csv`. Scenarios carry no probability.
+
 ## Example results
 
-These figures use 1,004 complete-case daily log returns for `SPY`, `QQQ`,
-`TLT`, and `GLD` from Yahoo Finance adjusted closes, covering January 5, 2021,
-through December 31, 2024. The volatility estimate uses a trailing window of 21
-trading observations, sample standard deviation (`ddof=1`), and square-root-of-
-time annualization with 252 observations per year. The correlation heatmap shows
-full-sample Pearson correlations. Results are historical descriptions, not
-forecasts.
+These illustrative figures are from an earlier `SPY` / `QQQ` / `TLT` / `GLD`
+run: 1,004 complete-case daily log returns covering January 5, 2021 through
+December 31, 2024, a 21-session trailing window, sample standard deviation
+(`ddof=1`), and square-root-of-time annualization with 252 observations per
+year. `config.example.toml` now uses a longer window; every run writes its own
+`rolling_volatility.png` and `correlation_heatmap.png` for current numbers.
+Results are historical descriptions, not forecasts.
 
 ![Rolling annualized volatility for SPY, QQQ, TLT, and GLD](assets/readme/rolling_volatility.png)
 
@@ -192,7 +293,10 @@ forecasts.
 
 ## Statistical conventions
 
-Statistical estimators use daily log returns. Simple returns are a separate output.
+The descriptive estimators below use daily log returns. Portfolio P&L,
+simple-return covariance, and tail risk use daily simple returns because
+currency P&L aggregates linearly as `exposure * simple_return`; those
+conventions are documented under [`docs/methodology/`](docs/methodology/README.md).
 
 | Metric | Convention |
 | --- | --- |
@@ -272,7 +376,9 @@ Unknown columns are rejected. Additional rules:
 - Every held instrument exists in the registry. When a market-data universe is
   supplied, every held provider ticker must also be selected.
 - Registry identifiers and position source-row identifiers are unique.
-- Instruments share the portfolio base currency, calendar, and timezone.
+- Held instruments share the portfolio base currency, calendar, and timezone,
+  and have a supported type. Registry rows a snapshot does not hold are checked
+  only for unique identifiers, so one registry can serve several books.
 - The built-in `XNYS` calendar covers 1990–2035 and requires
   `America/New_York`.
 - Snapshot and price timestamps include a UTC offset consistent with that timezone
@@ -283,7 +389,9 @@ Unknown columns are rejected. Additional rules:
 - Reordering registry or position rows does not change this ID; changing normalized
   material content does.
 - A run refuses to overwrite a different exposure snapshot in the same output
-  directory.
+  directory, including with a run that has no portfolio. A rerun removes
+  engine-owned artifacts it no longer writes (for example stress files when
+  the catalog is dropped); other files in the directory are left alone.
 
 ## Python API
 
@@ -293,14 +401,27 @@ For a shared experiment or downstream application, install an immutable commit:
 python -m pip install "historical-asset-risk-engine @ git+https://github.com/SIRE02/historical-asset-risk-engine.git@<commit>"
 ```
 
+Everything re-exported from the top-level `historical_asset_risk` namespace is
+the supported, versioned surface: every pure calculation function, their
+result and contract dataclasses, the artifact schema registry
+(`ARTIFACT_SCHEMAS`, `ARTIFACT_UNITS`), `load_artifact`, `AnalysisConfig`, the
+CSV readers, and the market calendar. `historical_asset_risk.__all__` is the
+authoritative list. Run orchestration (`cli.run_analysis`,
+`compute_portfolio_analytics`, `compute_tail_analytics`), providers, and
+plotting are intentionally not part of that
+surface; import them from their submodules if you need them. Every estimator is
+documented under [`docs/methodology/`](docs/methodology/README.md).
+
 ### Calculate statistics in memory
 
 ```python
 import pandas as pd
 
-from historical_asset_risk.correlation import correlation_matrix
-from historical_asset_risk.returns import calculate_log_returns
-from historical_asset_risk.risk_metrics import volatility_summary
+from historical_asset_risk import (
+    calculate_log_returns,
+    correlation_matrix,
+    volatility_summary,
+)
 
 prices = pd.DataFrame(
     {
@@ -327,7 +448,7 @@ Calculation modules perform no network access and create no files.
 ```python
 from pathlib import Path
 
-from historical_asset_risk.artifacts import load_artifact
+from historical_asset_risk import load_artifact
 
 root = Path("outputs/example")
 simple_returns = load_artifact(
@@ -350,12 +471,10 @@ versions and table shapes they accept.
 ```python
 from pathlib import Path
 
-from historical_asset_risk.artifacts import (
+from historical_asset_risk import (
     read_cash,
     read_instrument_registry,
     read_positions,
-)
-from historical_asset_risk.portfolio import (
     validate_portfolio_snapshot,
     value_portfolio,
 )
@@ -382,20 +501,29 @@ dates, per-instrument counts, duplicates, invalid/missing prices, alignment
 reduction, and optional portfolio reconciliation.
 
 `missing_adjusted_close_values` covers requested, in-range, deduplicated records.
-`source_missing_adjusted_close_values` covers the provider-normalized source before
-scope filters.
+`source_missing_adjusted_close_values`, `source_row_count`, and
+`invalid_date_count` cover the provider-normalized source before scope filters,
+including rows for tickers that were not requested.
 
 `run_manifest.json` records:
 
 - Package version, source commit when available, and execution time. VCS installs
   use their immutable installation metadata; editable source checkouts query only
   this package's repository, never the caller's working directory.
+  `git_worktree_dirty` is `true` when tracked files differ from that commit,
+  `false` when they match, and `null` when it cannot be checked (an installed
+  copy, or git unavailable). Untracked files do not count.
 - Effective configuration
-- Actual provider, source, read/acquisition time, range, and instruments
+- Actual provider, source, read/acquisition time, range, and instruments, plus
+  `price_content_hash`, a SHA-256 of the aligned adjusted prices. It feeds the
+  `data_snapshot_id` that realization rows join on, so revised prices under the
+  same dates and source get a new id.
 - Dependency versions
 - Generated artifacts with schema identities, versions, and units
 - Estimation and missing-data conventions
-- Portfolio sources, calendar, reconciliation, and snapshot identity when enabled
+- Portfolio sources, calendar, reconciliation, and snapshot identity when
+  enabled, plus `portfolio_analytics` and `tail_analytics` sections recording
+  the P&L, covariance, tail-risk, and stress conventions
 
 CSV runs also record the resolved source path and file modification time. These
 reports describe the data actually analyzed, not only what was requested.
@@ -434,12 +562,16 @@ python -m ruff format --check .
 python -m ruff check .
 python -m mypy
 python -m pytest -q
-python -m build
+python -m build --no-isolation
 ```
 
-The suite covers calculations, rolling boundaries, no-look-ahead behavior,
-alignment, Yahoo/CSV equivalence, reports, portfolio valuation, artifact schemas,
-packaging, clean installation, and the installed CLI.
+The suite covers calculations, rolling boundaries, trailing-window
+no-look-ahead behavior, alignment, Yahoo/CSV equivalence, reports, portfolio
+valuation, P&L, covariance risk, VaR/ES, stress, frozen schema contracts, the
+public API surface, packaging, clean installation, and the installed CLI.
+
+Version history is in [CHANGELOG.md](CHANGELOG.md); methodology per estimator is
+in [`docs/methodology/`](docs/methodology/README.md).
 
 ## License
 

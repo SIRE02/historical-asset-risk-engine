@@ -106,3 +106,13 @@ def extreme_correlation_pairs(
         float(cast(float, pairs.loc[lowest_pair])),
     )
     return highest, lowest
+
+
+__all__ = [
+    "align_returns",
+    "correlation_matrix",
+    "covariance_matrix",
+    "extreme_correlation_pairs",
+    "rolling_correlation",
+    "rolling_covariance",
+]

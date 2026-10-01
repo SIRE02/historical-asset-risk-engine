@@ -1,4 +1,4 @@
-"""Known-value, invariant, and validation tests for Phase 3 portfolios."""
+"""Known-value, invariant, and validation tests for portfolio books."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from historical_asset_risk.contracts import (
     Instrument,
     InstrumentType,
     NonPositivePortfolioValueError,
+    PortfolioCalendarError,
     PortfolioCurrencyError,
     PortfolioDateError,
     PortfolioDuplicateError,
@@ -326,6 +327,51 @@ def test_xnys_does_not_observe_saturday_new_year_on_preceding_friday() -> None:
 
     assert calendar.is_session(date(2021, 12, 31))
     assert calendar.is_session(date(2027, 12, 31))
+
+
+def test_registry_rows_the_book_does_not_hold_are_not_eligibility_checked(
+    instruments: tuple[Instrument, ...],
+    positions: tuple[Position, ...],
+    cash: Cash,
+) -> None:
+    euro_listing = replace(
+        instruments[0],
+        instrument_id="DE_SPY",
+        provider_ticker="SPY.DE",
+        listing_venue="XETR",
+        price_currency="EUR",
+        market_calendar_id="XETR",
+        market_timezone="Europe/Berlin",
+        adjusted_return_series_id="yahoo:SPY.DE:adj-close",
+    )
+    shared_registry = (*instruments, euro_listing)
+
+    snapshot = validate_portfolio_snapshot(shared_registry, positions, (cash,))
+    assert [item.instrument_id for item in snapshot.instruments] == [
+        "US_SPY",
+        "US_QQQ",
+    ]
+
+    holding_it = (replace(positions[0], instrument_id="DE_SPY"), positions[1])
+    with pytest.raises(PortfolioCurrencyError, match="DE_SPY"):
+        validate_portfolio_snapshot(shared_registry, holding_it, (cash,))
+
+
+def test_consecutive_sessions_allow_weekends_and_holidays_but_not_gaps() -> None:
+    calendar = resolve_market_calendar("XNYS")
+    # Fri 2024-01-12 -> Tue 2024-01-16 crosses a weekend and MLK Day: consecutive.
+    calendar.require_consecutive_sessions(
+        [date(2024, 1, 11), date(2024, 1, 12), date(2024, 1, 16)]
+    )
+
+    with pytest.raises(PortfolioCalendarError, match=r"missing 2024-01-08"):
+        calendar.require_consecutive_sessions(
+            [date(2024, 1, 4), date(2024, 1, 5), date(2024, 1, 9)]
+        )
+    with pytest.raises(PortfolioCalendarError, match="non-XNYS sessions: 2024-01-15"):
+        calendar.require_consecutive_sessions(
+            [date(2024, 1, 12), date(2024, 1, 15), date(2024, 1, 16)]
+        )
 
 
 @pytest.mark.parametrize(

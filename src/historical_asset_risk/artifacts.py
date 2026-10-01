@@ -1,4 +1,4 @@
-"""Strict Phase 3 CSV parsing and version-aware artifact loading."""
+"""Strict book CSV parsing and version-aware artifact loading."""
 
 from __future__ import annotations
 
@@ -13,12 +13,43 @@ from typing import Any
 import pandas as pd
 
 from historical_asset_risk.contracts import (
+    EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS,
+    EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID,
+    HYPOTHETICAL_PNL_COLUMNS,
+    HYPOTHETICAL_PNL_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_ID,
     INSTRUMENT_REGISTRY_SCHEMA_VERSION,
+    PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
+    PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
+    PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS,
+    PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID,
     PORTFOLIO_EXPOSURE_SCHEMA_ID,
     PORTFOLIO_EXPOSURE_SCHEMA_VERSION,
+    PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
+    PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
     PORTFOLIO_VALUATION_SCHEMA_ID,
     PORTFOLIO_VALUATION_SCHEMA_VERSION,
+    PORTFOLIO_VALUE_AT_RISK_COLUMNS,
+    PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID,
+    PROXY_REALIZED_PNL_COLUMNS,
+    PROXY_REALIZED_PNL_SCHEMA_ID,
+    RISK_REALIZATIONS_COLUMNS,
+    RISK_REALIZATIONS_SCHEMA_ID,
+    SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
+    SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
+    SIMPLE_RETURN_SUMMARY_SCHEMA_ID,
+    STRESS_CATALOG_SCHEMA_ID,
+    STRESS_CONTRIBUTIONS_COLUMNS,
+    STRESS_CONTRIBUTIONS_SCHEMA_ID,
+    STRESS_SCENARIO_SCHEMA_VERSION,
+    STRESS_TEST_RESULTS_COLUMNS,
+    STRESS_TEST_RESULTS_SCHEMA_ID,
+    TAIL_ANALYTICS_SCHEMA_VERSION,
+    TAIL_RISK_COMPARISON_COLUMNS,
+    TAIL_RISK_COMPARISON_SCHEMA_ID,
+    TRAILING_TAIL_RISK_COLUMNS,
+    TRAILING_TAIL_RISK_SCHEMA_ID,
     VALIDATED_POSITIONS_SCHEMA_ID,
     VALIDATED_POSITIONS_SCHEMA_VERSION,
     ArtifactSchemaError,
@@ -141,6 +172,78 @@ ARTIFACT_SCHEMAS: dict[str, tuple[str, str]] = {
         "historical-asset-risk/run-manifest",
         TABULAR_ARTIFACT_SCHEMA_VERSION,
     ),
+    "portfolio_aligned_simple_returns.csv": (
+        PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "hypothetical_portfolio_pnl.csv": (
+        HYPOTHETICAL_PNL_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "proxy_realized_portfolio_pnl.csv": (
+        PROXY_REALIZED_PNL_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "risk_realizations.csv": (
+        RISK_REALIZATIONS_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_simple_return_covariance.csv": (
+        SIMPLE_RETURN_COVARIANCE_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_simple_return_correlation.csv": (
+        SIMPLE_RETURN_CORRELATION_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "simple_return_summary.csv": (
+        SIMPLE_RETURN_SUMMARY_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_risk_summary.csv": (
+        PORTFOLIO_RISK_SUMMARY_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_risk_contributions.csv": (
+        PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_concentration_summary.csv": (
+        PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID,
+        PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_value_at_risk.csv": (
+        PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_expected_shortfall.csv": (
+        PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "portfolio_expected_shortfall_tail_weights.csv": (
+        EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "tail_risk_comparison.csv": (
+        TAIL_RISK_COMPARISON_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "trailing_portfolio_tail_risk.csv": (
+        TRAILING_TAIL_RISK_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "stress_test_results.csv": (
+        STRESS_TEST_RESULTS_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "stress_contributions.csv": (
+        STRESS_CONTRIBUTIONS_SCHEMA_ID,
+        TAIL_ANALYTICS_SCHEMA_VERSION,
+    ),
+    "stress_scenario_catalog.json": (
+        STRESS_CATALOG_SCHEMA_ID,
+        STRESS_SCENARIO_SCHEMA_VERSION,
+    ),
 }
 ARTIFACT_UNITS: dict[str, str] = {
     "acquired_adjusted_prices.csv": "provider_adjusted_price",
@@ -160,6 +263,24 @@ ARTIFACT_UNITS: dict[str, str] = {
     "portfolio_exposure_summary.csv": "decimal_ratio",
     "data_quality_report.json": "structured_counts_and_lineage",
     "run_manifest.json": "structured_lineage",
+    "portfolio_aligned_simple_returns.csv": "decimal_simple_return_per_interval",
+    "hypothetical_portfolio_pnl.csv": "base_currency_pnl_loss_is_positive",
+    "proxy_realized_portfolio_pnl.csv": "base_currency_pnl_loss_is_positive",
+    "risk_realizations.csv": "base_currency_loss_identity",
+    "portfolio_simple_return_covariance.csv": "daily_simple_return_squared",
+    "portfolio_simple_return_correlation.csv": "dimensionless",
+    "simple_return_summary.csv": "mixed_units_by_named_column",
+    "portfolio_risk_summary.csv": "mixed_units_by_named_column",
+    "portfolio_risk_contributions.csv": "mixed_units_by_named_column",
+    "portfolio_concentration_summary.csv": "mixed_units_by_named_column",
+    "portfolio_value_at_risk.csv": "loss_units_by_named_dimension",
+    "portfolio_expected_shortfall.csv": "loss_units_by_named_dimension",
+    "portfolio_expected_shortfall_tail_weights.csv": "loss_and_dimensionless_weight",
+    "tail_risk_comparison.csv": "loss_units_by_named_dimension",
+    "trailing_portfolio_tail_risk.csv": "base_currency_loss",
+    "stress_test_results.csv": "base_currency_pnl_loss_is_positive",
+    "stress_contributions.csv": "base_currency_pnl_loss_is_positive",
+    "stress_scenario_catalog.json": "decimal_simple_return_shocks",
 }
 
 _VALIDATED_INSTRUMENT_OUTPUT_COLUMNS = INSTRUMENT_COLUMNS + ("schema_version",)
@@ -216,6 +337,21 @@ _STRICT_OUTPUT_COLUMNS = {
     "validated_positions.csv": _VALIDATED_POSITION_OUTPUT_COLUMNS,
     "portfolio_valuation.csv": _PORTFOLIO_VALUATION_OUTPUT_COLUMNS,
     "portfolio_exposure_summary.csv": _PORTFOLIO_EXPOSURE_OUTPUT_COLUMNS,
+    # Frozen portfolio-loss and realization contract (the tail-risk layer
+    # depends on these; the column set and order must not drift).
+    "hypothetical_portfolio_pnl.csv": HYPOTHETICAL_PNL_COLUMNS,
+    "proxy_realized_portfolio_pnl.csv": PROXY_REALIZED_PNL_COLUMNS,
+    "risk_realizations.csv": RISK_REALIZATIONS_COLUMNS,
+    # Frozen tail-risk and stress contract.
+    "portfolio_value_at_risk.csv": PORTFOLIO_VALUE_AT_RISK_COLUMNS,
+    "portfolio_expected_shortfall.csv": PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS,
+    "portfolio_expected_shortfall_tail_weights.csv": (
+        EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS
+    ),
+    "tail_risk_comparison.csv": TAIL_RISK_COMPARISON_COLUMNS,
+    "trailing_portfolio_tail_risk.csv": TRAILING_TAIL_RISK_COLUMNS,
+    "stress_test_results.csv": STRESS_TEST_RESULTS_COLUMNS,
+    "stress_contributions.csv": STRESS_CONTRIBUTIONS_COLUMNS,
 }
 
 
@@ -396,7 +532,7 @@ def read_cash(path: Path) -> tuple[Cash, ...]:
 def portfolio_artifact_frames(
     valuation: PortfolioValuation,
 ) -> dict[str, pd.DataFrame]:
-    """Create the four required deterministic Phase 3 CSV tables."""
+    """Create the four required deterministic book CSV tables."""
     snapshot = valuation.snapshot
     cash = snapshot.cash
     instrument_rows = [

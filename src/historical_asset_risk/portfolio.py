@@ -171,6 +171,36 @@ def _normalized_market_universe(values: Sequence[str] | None) -> tuple[str, ...]
     return normalized
 
 
+def _validate_held_instrument(instrument: Instrument, cash: Cash) -> None:
+    if instrument.instrument_type not in {
+        InstrumentType.EQUITY,
+        InstrumentType.STANDARD_ETF,
+    }:
+        raise InstrumentEligibilityError(
+            f"Instrument {instrument.instrument_id!r} has unsupported "
+            f"type {instrument.instrument_type!s}."
+        )
+    if instrument.price_currency != cash.base_currency:
+        raise PortfolioCurrencyError(
+            f"Instrument {instrument.instrument_id!r} currency "
+            f"{instrument.price_currency!r} does not match portfolio "
+            f"base currency {cash.base_currency!r}."
+        )
+    if instrument.market_calendar_id != cash.market_calendar_id:
+        raise PortfolioCalendarError(
+            f"Instrument {instrument.instrument_id!r} calendar "
+            f"{instrument.market_calendar_id!r} does not match "
+            f"portfolio calendar {cash.market_calendar_id!r}."
+        )
+    if instrument.market_timezone != cash.market_timezone:
+        raise PortfolioTimezoneError(
+            f"Instrument {instrument.instrument_id!r} timezone "
+            f"{instrument.market_timezone!r} does not match portfolio "
+            f"timezone {cash.market_timezone!r}."
+        )
+    _validate_timezone(instrument.market_timezone)
+
+
 def validate_portfolio_snapshot(
     instruments: Sequence[Instrument],
     positions: Sequence[Position],
@@ -256,35 +286,6 @@ def validate_portfolio_snapshot(
     held_ids: list[str] = []
     held_tickers: list[str] = []
     held_instruments: list[Instrument] = []
-    for registry_instrument in instruments:
-        if registry_instrument.instrument_type not in {
-            InstrumentType.EQUITY,
-            InstrumentType.STANDARD_ETF,
-        }:
-            raise InstrumentEligibilityError(
-                f"Instrument {registry_instrument.instrument_id!r} has unsupported "
-                f"type {registry_instrument.instrument_type!s}."
-            )
-        if registry_instrument.price_currency != cash.base_currency:
-            raise PortfolioCurrencyError(
-                f"Instrument {registry_instrument.instrument_id!r} currency "
-                f"{registry_instrument.price_currency!r} does not match portfolio "
-                f"base currency {cash.base_currency!r}."
-            )
-        if registry_instrument.market_calendar_id != cash.market_calendar_id:
-            raise PortfolioCalendarError(
-                f"Instrument {registry_instrument.instrument_id!r} calendar "
-                f"{registry_instrument.market_calendar_id!r} does not match "
-                f"portfolio calendar {cash.market_calendar_id!r}."
-            )
-        if registry_instrument.market_timezone != cash.market_timezone:
-            raise PortfolioTimezoneError(
-                f"Instrument {registry_instrument.instrument_id!r} timezone "
-                f"{registry_instrument.market_timezone!r} does not match portfolio "
-                f"timezone {cash.market_timezone!r}."
-            )
-        _validate_timezone(registry_instrument.market_timezone)
-
     for position in positions:
         instrument = instrument_by_id.get(position.instrument_id)
         if instrument is None:
@@ -292,6 +293,10 @@ def validate_portfolio_snapshot(
                 f"Position instrument_id {position.instrument_id!r} is absent "
                 "from the instrument registry."
             )
+        # Eligibility applies to what the book holds. A shared registry may
+        # list other instruments (another currency, a leveraged ETF) that this
+        # snapshot never values; only their identifiers must stay unique.
+        _validate_held_instrument(instrument, cash)
         if not math.isfinite(position.quantity) or position.quantity == 0:
             raise PortfolioQuantityError(
                 f"Position quantity for {position.instrument_id!r} must be finite "

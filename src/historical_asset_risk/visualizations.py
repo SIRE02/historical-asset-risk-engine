@@ -61,3 +61,6 @@ def plot_correlation_heatmap(correlations: pd.DataFrame, output_path: Path) -> N
     figure.tight_layout()
     figure.savefig(output_path, dpi=180, bbox_inches="tight")
     plt.close(figure)
+
+
+__all__ = ["plot_correlation_heatmap", "plot_rolling_volatility"]

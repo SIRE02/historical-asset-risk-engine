@@ -20,6 +20,211 @@ PORTFOLIO_EXPOSURE_SCHEMA_ID = "historical-asset-risk/portfolio-exposure-summary
 PORTFOLIO_EXPOSURE_SCHEMA_VERSION = "1.experimental"
 EXPOSURE_SNAPSHOT_SCHEMA_VERSION = "1.experimental"
 
+# --- Portfolio analytics: P&L, aggregation, and realizations -------------------
+# Simple-return artifacts are deliberately distinct in schema id and units from
+# the descriptive log-return covariance/correlation artifacts.
+PORTFOLIO_ANALYTICS_SCHEMA_VERSION = "1.experimental"
+PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-aligned-simple-returns"
+)
+HYPOTHETICAL_PNL_SCHEMA_ID = "historical-asset-risk/hypothetical-portfolio-pnl"
+PROXY_REALIZED_PNL_SCHEMA_ID = "historical-asset-risk/proxy-realized-portfolio-pnl"
+RISK_REALIZATIONS_SCHEMA_ID = "historical-asset-risk/risk-realizations"
+# Independent of the artifact schema version: identifies the realization
+# calculation so a downstream engine can pin the identity it joins forecasts to.
+RISK_REALIZATION_CALCULATION_VERSION = "historical-asset-risk/proxy-realization@1"
+SIMPLE_RETURN_COVARIANCE_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-simple-return-covariance"
+)
+SIMPLE_RETURN_CORRELATION_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-simple-return-correlation"
+)
+SIMPLE_RETURN_SUMMARY_SCHEMA_ID = "historical-asset-risk/simple-return-summary"
+PORTFOLIO_RISK_SUMMARY_SCHEMA_ID = "historical-asset-risk/portfolio-risk-summary"
+PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-risk-contributions"
+)
+PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-concentration-summary"
+)
+
+# Frozen column contracts for the portfolio-loss and realization artifacts that
+# the tail-risk and stress layer builds on. The schema version stays
+# ``experimental`` pending promotion, but the column set, order, units, and
+# loss sign of these three files must not change.
+HYPOTHETICAL_PNL_COLUMNS: tuple[str, ...] = (
+    "portfolio_snapshot_id",
+    "exposure_snapshot_id",
+    "portfolio_id",
+    "as_of_date",
+    "as_of_timestamp",
+    "base_currency",
+    "market_calendar_id",
+    "data_snapshot_id",
+    "period_start",
+    "period_end",
+    "return_type",
+    "hypothetical_pnl",
+    "hypothetical_loss",
+    "units",
+    "loss_sign",
+    "schema_version",
+)
+PROXY_REALIZED_PNL_COLUMNS: tuple[str, ...] = (
+    "portfolio_snapshot_id",
+    "portfolio_id",
+    "exposure_snapshot_id",
+    "as_of_date",
+    "target_period_start",
+    "target_period_end",
+    "market_calendar_id",
+    "held_instrument_count",
+    "missing_instruments",
+    "proxy_realized_pnl",
+    "proxy_realized_loss",
+    "outcome_status",
+    "data_snapshot_id",
+    "return_type",
+    "units",
+    "loss_sign",
+    "calculation_version",
+    "schema_version",
+)
+# --- Tail analytics: tail risk and stress -------------------------------------
+TAIL_ANALYTICS_SCHEMA_VERSION = "1.experimental"
+PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID = "historical-asset-risk/portfolio-value-at-risk"
+PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID = (
+    "historical-asset-risk/portfolio-expected-shortfall"
+)
+EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID = (
+    "historical-asset-risk/expected-shortfall-tail-weights"
+)
+TAIL_RISK_COMPARISON_SCHEMA_ID = "historical-asset-risk/tail-risk-comparison"
+TRAILING_TAIL_RISK_SCHEMA_ID = "historical-asset-risk/trailing-portfolio-tail-risk"
+STRESS_TEST_RESULTS_SCHEMA_ID = "historical-asset-risk/stress-test-results"
+STRESS_CONTRIBUTIONS_SCHEMA_ID = "historical-asset-risk/stress-contributions"
+STRESS_CATALOG_SCHEMA_ID = "historical-asset-risk/stress-scenario-catalog"
+STRESS_SCENARIO_SCHEMA_VERSION = "1.experimental"
+
+RISK_REALIZATIONS_COLUMNS: tuple[str, ...] = (
+    "portfolio_id",
+    "exposure_snapshot_id",
+    "market_calendar_id",
+    "target_period_start",
+    "target_period_end",
+    "units",
+    "loss_sign",
+    "realized_loss",
+    "outcome_status",
+    "data_snapshot_id",
+    "calculation_version",
+    "schema_version",
+)
+
+# Frozen column contracts for the tail-risk and stress artifacts. The schema
+# version stays experimental pending promotion, but these column sets, orders,
+# and loss sign must not drift.
+_TAIL_IDENTITY = (
+    "portfolio_snapshot_id",
+    "exposure_snapshot_id",
+    "portfolio_id",
+    "as_of_date",
+    "base_currency",
+    "data_snapshot_id",
+)
+PORTFOLIO_VALUE_AT_RISK_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "dimension",
+    "units",
+    "confidence_level",
+    "observation_count",
+    "value_at_risk",
+    "order_statistic_rank",
+    "quantile_method",
+    "tail_sample_warning",
+    "schema_version",
+)
+PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "dimension",
+    "units",
+    "confidence_level",
+    "observation_count",
+    "expected_shortfall",
+    "value_at_risk",
+    "nominal_tail_observations",
+    "full_tail_count",
+    "boundary_weight",
+    "contributing_observation_count",
+    "es_ge_var",
+    "tail_sample_warning",
+    "schema_version",
+)
+EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS: tuple[str, ...] = (
+    "exposure_snapshot_id",
+    "dimension",
+    "units",
+    "confidence_level",
+    "order_statistic_rank",
+    "loss",
+    "weight",
+    "schema_version",
+)
+TAIL_RISK_COMPARISON_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "dimension",
+    "units",
+    "confidence_level",
+    "observation_count",
+    "historical_var",
+    "historical_es",
+    "normal_var_mean_included",
+    "normal_es_mean_included",
+    "normal_var_zero_mean",
+    "normal_es_zero_mean",
+    "mean_loss",
+    "standard_deviation",
+    "z_alpha",
+    "schema_version",
+)
+TRAILING_TAIL_RISK_COLUMNS: tuple[str, ...] = (
+    "as_of_date",
+    "exposure_snapshot_id",
+    "window",
+    "window_observation_count",
+    "confidence_level",
+    "value_at_risk",
+    "expected_shortfall",
+    "es_ge_var",
+    "outcome_status",
+    "units",
+    "schema_version",
+)
+STRESS_TEST_RESULTS_COLUMNS: tuple[str, ...] = (
+    *_TAIL_IDENTITY,
+    "scenario_id",
+    "scenario_version",
+    "name",
+    "kind",
+    "content_hash",
+    "scenario_pnl",
+    "scenario_loss",
+    "units",
+    "loss_sign",
+    "schema_version",
+)
+STRESS_CONTRIBUTIONS_COLUMNS: tuple[str, ...] = (
+    "exposure_snapshot_id",
+    "scenario_id",
+    "scenario_version",
+    "instrument_id",
+    "currency_exposure",
+    "simple_return_shock",
+    "scenario_pnl",
+    "scenario_loss",
+    "schema_version",
+)
+
 
 class PortfolioError(ValueError):
     """Base class for readable portfolio-domain failures."""
@@ -79,6 +284,14 @@ class NonPositivePortfolioValueError(PortfolioError):
 
 class ArtifactSchemaError(PortfolioSchemaError):
     """Raised when a persisted artifact has no supported declared schema."""
+
+
+class PortfolioReturnAlignmentError(PortfolioError):
+    """Raised when held instruments cannot be aligned to a simple-return matrix."""
+
+
+class PortfolioCovarianceError(PortfolioError):
+    """Raised when a simple-return covariance sample is too small or degenerate."""
 
 
 class InstrumentType(StrEnum):
@@ -210,20 +423,61 @@ class PortfolioValuation:
 
 
 __all__ = [
-    "ArtifactSchemaError",
     "CASH_SCHEMA_ID",
     "CASH_SCHEMA_VERSION",
-    "Cash",
-    "CurrencyValuedPosition",
+    "EXPECTED_SHORTFALL_TAIL_WEIGHTS_COLUMNS",
+    "EXPECTED_SHORTFALL_TAIL_WEIGHTS_SCHEMA_ID",
     "EXPOSURE_SNAPSHOT_SCHEMA_VERSION",
+    "HYPOTHETICAL_PNL_COLUMNS",
+    "HYPOTHETICAL_PNL_SCHEMA_ID",
     "INSTRUMENT_REGISTRY_SCHEMA_ID",
     "INSTRUMENT_REGISTRY_SCHEMA_VERSION",
+    "PORTFOLIO_ALIGNED_SIMPLE_RETURNS_SCHEMA_ID",
+    "PORTFOLIO_ANALYTICS_SCHEMA_VERSION",
+    "PORTFOLIO_CONCENTRATION_SUMMARY_SCHEMA_ID",
+    "PORTFOLIO_EXPECTED_SHORTFALL_COLUMNS",
+    "PORTFOLIO_EXPECTED_SHORTFALL_SCHEMA_ID",
+    "PORTFOLIO_EXPOSURE_SCHEMA_ID",
+    "PORTFOLIO_EXPOSURE_SCHEMA_VERSION",
+    "PORTFOLIO_RISK_CONTRIBUTIONS_SCHEMA_ID",
+    "PORTFOLIO_RISK_SUMMARY_SCHEMA_ID",
+    "PORTFOLIO_VALUATION_SCHEMA_ID",
+    "PORTFOLIO_VALUATION_SCHEMA_VERSION",
+    "PORTFOLIO_VALUE_AT_RISK_COLUMNS",
+    "PORTFOLIO_VALUE_AT_RISK_SCHEMA_ID",
+    "POSITIONS_SCHEMA_ID",
+    "POSITIONS_SCHEMA_VERSION",
+    "PROXY_REALIZED_PNL_COLUMNS",
+    "PROXY_REALIZED_PNL_SCHEMA_ID",
+    "RISK_REALIZATIONS_COLUMNS",
+    "RISK_REALIZATIONS_SCHEMA_ID",
+    "RISK_REALIZATION_CALCULATION_VERSION",
+    "SIMPLE_RETURN_CORRELATION_SCHEMA_ID",
+    "SIMPLE_RETURN_COVARIANCE_SCHEMA_ID",
+    "SIMPLE_RETURN_SUMMARY_SCHEMA_ID",
+    "STRESS_CATALOG_SCHEMA_ID",
+    "STRESS_CONTRIBUTIONS_COLUMNS",
+    "STRESS_CONTRIBUTIONS_SCHEMA_ID",
+    "STRESS_SCENARIO_SCHEMA_VERSION",
+    "STRESS_TEST_RESULTS_COLUMNS",
+    "STRESS_TEST_RESULTS_SCHEMA_ID",
+    "TAIL_ANALYTICS_SCHEMA_VERSION",
+    "TAIL_RISK_COMPARISON_COLUMNS",
+    "TAIL_RISK_COMPARISON_SCHEMA_ID",
+    "TRAILING_TAIL_RISK_COLUMNS",
+    "TRAILING_TAIL_RISK_SCHEMA_ID",
+    "VALIDATED_POSITIONS_SCHEMA_ID",
+    "VALIDATED_POSITIONS_SCHEMA_VERSION",
+    "ArtifactSchemaError",
+    "Cash",
+    "CurrencyValuedPosition",
     "Instrument",
     "InstrumentEligibilityError",
     "InstrumentType",
     "NonPositivePortfolioValueError",
     "PortfolioCalendarError",
     "PortfolioCashError",
+    "PortfolioCovarianceError",
     "PortfolioCurrencyError",
     "PortfolioCurrencyValuation",
     "PortfolioDateError",
@@ -233,19 +487,12 @@ __all__ = [
     "PortfolioPriceError",
     "PortfolioQuantityError",
     "PortfolioReconciliation",
+    "PortfolioReturnAlignmentError",
     "PortfolioSchemaError",
     "PortfolioTimestampError",
     "PortfolioTimezoneError",
     "PortfolioValuation",
-    "PORTFOLIO_EXPOSURE_SCHEMA_ID",
-    "PORTFOLIO_EXPOSURE_SCHEMA_VERSION",
-    "PORTFOLIO_VALUATION_SCHEMA_ID",
-    "PORTFOLIO_VALUATION_SCHEMA_VERSION",
-    "POSITIONS_SCHEMA_ID",
-    "POSITIONS_SCHEMA_VERSION",
     "Position",
-    "VALIDATED_POSITIONS_SCHEMA_ID",
-    "VALIDATED_POSITIONS_SCHEMA_VERSION",
     "ValidatedPortfolioSnapshot",
     "ValuedPosition",
 ]

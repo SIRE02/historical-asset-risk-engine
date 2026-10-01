@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from historical_asset_risk.config import AnalysisConfig
@@ -17,9 +19,22 @@ from historical_asset_risk.providers import (
     MarketDataError,
     MarketDataProvider,
     ProviderPayload,
-    YahooFinanceProvider,
     extract_yahoo_adjusted_close,
 )
+
+
+def price_content_hash(prices: pd.DataFrame) -> str:
+    """Return the ``sha256:`` identity of an aligned adjusted-price matrix.
+
+    The hash covers dates, instrument columns in order, and every price. It is
+    taken over a canonical CSV rendering (ISO dates, ``\\n`` line endings, and
+    round-trip float text), so it does not depend on the platform that wrote
+    ``adjusted_prices.csv``.
+    """
+    canonical = prices.to_csv(
+        index_label="date", date_format="%Y-%m-%d", lineterminator="\n"
+    )
+    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -31,34 +46,10 @@ class MarketDataResult:
     payload: ProviderPayload
     quality_report: dict[str, Any]
 
-
-def validate_configuration(
-    tickers: Sequence[str],
-    start_date: str,
-    end_date: str,
-    rolling_window: int,
-) -> list[str]:
-    """Validate legacy loader arguments and return normalized symbols."""
-    if isinstance(tickers, (str, bytes)):
-        raise ValueError("TICKERS must be a sequence containing at least two symbols.")
-    normalized = list(dict.fromkeys(str(ticker).strip().upper() for ticker in tickers))
-    normalized = [ticker for ticker in normalized if ticker]
-    if len(normalized) < 2:
-        raise ValueError("At least two unique ticker symbols are required.")
-    try:
-        start = date.fromisoformat(start_date)
-        end = date.fromisoformat(end_date)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("START_DATE and END_DATE must use YYYY-MM-DD format.") from exc
-    if start >= end:
-        raise ValueError("START_DATE must be earlier than END_DATE.")
-    if (
-        isinstance(rolling_window, bool)
-        or not isinstance(rolling_window, int)
-        or rolling_window <= 0
-    ):
-        raise ValueError("ROLLING_WINDOW must be a positive integer.")
-    return normalized
+    @property
+    def price_content_hash(self) -> str:
+        """Identity of the aligned prices every estimator in the run used."""
+        return price_content_hash(self.prices)
 
 
 def _canonical_from_wide(adjusted_prices: pd.DataFrame) -> pd.DataFrame:
@@ -96,17 +87,37 @@ def normalize_and_validate(
     data = data.loc[
         data["date"].notna() & (data["date"] >= start) & (data["date"] < end)
     ]
-    duplicate_rows = int(data.duplicated(subset=["date", "ticker"], keep="last").sum())
-    data = data.drop_duplicates(subset=["date", "ticker"], keep="last")
-
     source_prices = data["adjusted_close"]
-    scoped_missing_prices = int(source_prices.isna().sum())
     numeric_prices = pd.to_numeric(source_prices, errors="coerce")
     nonnumeric_prices = source_prices.notna() & numeric_prices.isna()
-    nonpositive_prices = numeric_prices.notna() & (numeric_prices <= 0)
-    invalid_prices = int((nonnumeric_prices | nonpositive_prices).sum())
-    data["adjusted_close"] = numeric_prices.mask(nonpositive_prices)
-    data = data.sort_values(["date", "ticker"]).reset_index(drop=True)
+    # ``to_numeric`` parses "inf"; an infinite price would otherwise survive as
+    # a valid observation and turn the next simple return into exactly -1.
+    unusable_prices = numeric_prices.notna() & (
+        (numeric_prices <= 0) | ~np.isfinite(numeric_prices)
+    )
+    data = data.assign(
+        adjusted_close=numeric_prices.mask(unusable_prices),
+        source_missing=source_prices.isna(),
+        invalid=nonnumeric_prices | unusable_prices,
+        source_order=np.arange(len(data)),
+    )
+    # A later row for the same date and instrument replaces an earlier one,
+    # except that a missing or invalid price never replaces a valid one: valid
+    # rows sort last, so ``keep="last"`` picks the last valid row when one
+    # exists. Validity is decided before deduplication for that reason.
+    data = data.assign(usable=data["adjusted_close"].notna()).sort_values(
+        ["usable", "source_order"], kind="stable"
+    )
+    duplicate_rows = int(data.duplicated(subset=["date", "ticker"], keep="last").sum())
+    data = data.drop_duplicates(subset=["date", "ticker"], keep="last")
+    # Both counts describe the deduplicated records, as before.
+    scoped_missing_prices = int(data["source_missing"].sum())
+    invalid_prices = int(data["invalid"].sum())
+    data = (
+        data.loc[:, list(CANONICAL_COLUMNS)]
+        .sort_values(["date", "ticker"])
+        .reset_index(drop=True)
+    )
 
     returned = sorted(
         data.loc[data["adjusted_close"].notna(), "ticker"].unique().tolist()
@@ -248,19 +259,12 @@ def _extract_adjusted_close(raw: pd.DataFrame, tickers: Sequence[str]) -> pd.Dat
     return extract_yahoo_adjusted_close(raw, list(tickers))
 
 
-def download_adjusted_prices(
-    tickers: Sequence[str],
-    start_date: str,
-    end_date: str,
-    rolling_window: int,
-) -> pd.DataFrame:
-    """Compatibility wrapper for an explicit Yahoo provider run."""
-    symbols = validate_configuration(tickers, start_date, end_date, rolling_window)
-    config = AnalysisConfig(
-        provider="yahoo",
-        tickers=tuple(symbols),
-        start_date=start_date,
-        end_date=end_date,
-        rolling_window=rolling_window,
-    )
-    return load_market_data(config, YahooFinanceProvider()).prices
+__all__ = [
+    "MarketDataResult",
+    "clean_adjusted_prices",
+    "load_market_data",
+    "normalize_and_validate",
+    "persist_acquisition",
+    "persist_quality_report",
+    "price_content_hash",
+]

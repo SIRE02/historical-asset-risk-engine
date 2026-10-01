@@ -21,7 +21,10 @@ tmp/
 
 # Local input data is not published. Synthetic repository examples live elsewhere.
 /data/
-docs/
+# Working notes and project conventions stay private; methodology pages ship.
+/docs/*
+!/docs/methodology/
+CLAUDE.md
 
 # Local environment variables
 .env

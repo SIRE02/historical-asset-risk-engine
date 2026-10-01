@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -39,6 +40,11 @@ DEFAULT_CONFIGURATION: dict[str, Any] = {
     "instrument_registry_path": None,
     "positions_path": None,
     "cash_path": None,
+    "positions_history_path": None,
+    "cash_history_path": None,
+    "tail_risk_confidence_level": 0.95,
+    "tail_risk_window": None,
+    "stress_catalog_path": None,
 }
 
 
@@ -61,6 +67,11 @@ class AnalysisConfig:
     instrument_registry_path: Path | None = None
     positions_path: Path | None = None
     cash_path: Path | None = None
+    positions_history_path: Path | None = None
+    cash_history_path: Path | None = None
+    tail_risk_confidence_level: float = 0.95
+    tail_risk_window: int | None = None
+    stress_catalog_path: Path | None = None
 
     def __post_init__(self) -> None:
         provider = str(self.provider).strip().lower()
@@ -136,6 +147,59 @@ class AnalysisConfig:
                 raise ValueError(f"{name} does not identify a readable file: {path}")
             normalized_portfolio_paths[name] = path
 
+        history_paths = {
+            "POSITIONS_HISTORY_PATH": self.positions_history_path,
+            "CASH_HISTORY_PATH": self.cash_history_path,
+        }
+        supplied_history = {
+            name: value for name, value in history_paths.items() if value is not None
+        }
+        if supplied_history:
+            if len(supplied_history) != len(history_paths):
+                missing = sorted(set(history_paths) - set(supplied_history))
+                raise ValueError(
+                    "Proxy realized P&L requires both history paths; missing "
+                    + ", ".join(missing)
+                    + "."
+                )
+            if not supplied_portfolio_paths:
+                raise ValueError(
+                    "POSITIONS_HISTORY_PATH and CASH_HISTORY_PATH require the "
+                    "primary portfolio paths as well."
+                )
+        normalized_history_paths: dict[str, Path | None] = {}
+        for name, value in history_paths.items():
+            path = Path(value).expanduser() if value is not None else None
+            if path is not None and not path.is_file():
+                raise ValueError(f"{name} does not identify a readable file: {path}")
+            normalized_history_paths[name] = path
+
+        confidence = validate_finite_number(
+            self.tail_risk_confidence_level, "TAIL_RISK_CONFIDENCE_LEVEL"
+        )
+        if not 0.5 < confidence < 1.0:
+            raise ValueError("TAIL_RISK_CONFIDENCE_LEVEL must satisfy 0.5 < alpha < 1.")
+        window = self.tail_risk_window
+        if window is not None:
+            validate_positive_integer(window, "TAIL_RISK_WINDOW")
+            if window < 2:
+                raise ValueError("TAIL_RISK_WINDOW must be at least 2.")
+        stress_catalog_path = (
+            Path(self.stress_catalog_path).expanduser()
+            if self.stress_catalog_path is not None
+            else None
+        )
+        if stress_catalog_path is not None:
+            if not supplied_portfolio_paths:
+                raise ValueError(
+                    "STRESS_CATALOG_PATH requires the portfolio paths as well."
+                )
+            if not stress_catalog_path.is_file():
+                raise ValueError(
+                    "STRESS_CATALOG_PATH does not identify a readable file: "
+                    f"{stress_catalog_path}"
+                )
+
         object.__setattr__(self, "provider", provider)
         object.__setattr__(self, "tickers", symbols)
         object.__setattr__(self, "quantiles", quantiles)
@@ -153,10 +217,20 @@ class AnalysisConfig:
             self, "positions_path", normalized_portfolio_paths["POSITIONS_PATH"]
         )
         object.__setattr__(self, "cash_path", normalized_portfolio_paths["CASH_PATH"])
+        object.__setattr__(
+            self,
+            "positions_history_path",
+            normalized_history_paths["POSITIONS_HISTORY_PATH"],
+        )
+        object.__setattr__(
+            self, "cash_history_path", normalized_history_paths["CASH_HISTORY_PATH"]
+        )
+        object.__setattr__(self, "tail_risk_confidence_level", confidence)
+        object.__setattr__(self, "stress_catalog_path", stress_catalog_path)
 
     @property
     def portfolio_enabled(self) -> bool:
-        """Whether the complete Phase 3 input set is configured."""
+        """Whether the complete portfolio-book input set is configured."""
         return self.instrument_registry_path is not None
 
     def to_dict(self) -> dict[str, Any]:
@@ -176,6 +250,19 @@ class AnalysisConfig:
         )
         values["cash_path"] = (
             str(self.cash_path) if self.cash_path is not None else None
+        )
+        values["positions_history_path"] = (
+            str(self.positions_history_path)
+            if self.positions_history_path is not None
+            else None
+        )
+        values["cash_history_path"] = (
+            str(self.cash_history_path) if self.cash_history_path is not None else None
+        )
+        values["stress_catalog_path"] = (
+            str(self.stress_catalog_path)
+            if self.stress_catalog_path is not None
+            else None
         )
         return values
 
@@ -203,11 +290,40 @@ def _read_config_file(path: Path) -> dict[str, Any]:
     return loaded
 
 
+_PATH_OPTIONS = (
+    "output_dir",
+    "csv_path",
+    "instrument_registry_path",
+    "positions_path",
+    "cash_path",
+    "positions_history_path",
+    "cash_history_path",
+    "stress_catalog_path",
+)
+
+
+def _resolve_file_path(config_directory: Path, value: object) -> Path:
+    """Resolve a path written in a config file against that file's folder.
+
+    A config then means the same thing from any working directory. Absolute
+    and ``~`` paths are kept as written.
+    """
+    path = Path(str(value)).expanduser()
+    if path.is_absolute():
+        return path
+    return Path(os.path.normpath(config_directory / path))
+
+
 def load_configuration(
     config_path: Path | None = None,
     overrides: Mapping[str, Any] | None = None,
 ) -> AnalysisConfig:
-    """Merge defaults, an optional TOML/JSON file, and command-line overrides."""
+    """Merge defaults, an optional TOML/JSON file, and command-line overrides.
+
+    Relative paths in the file resolve against the file's folder. Relative
+    paths given as overrides (command-line flags) resolve against the working
+    directory, like any other command-line path.
+    """
     values = dict(DEFAULT_CONFIGURATION)
     if config_path is not None:
         path = Path(config_path)
@@ -215,6 +331,9 @@ def load_configuration(
         unknown = sorted(set(file_values) - set(DEFAULT_CONFIGURATION))
         if unknown:
             raise ValueError(f"Unknown configuration option(s): {', '.join(unknown)}")
+        for name in _PATH_OPTIONS:
+            if file_values.get(name) is not None:
+                file_values[name] = _resolve_file_path(path.parent, file_values[name])
         values.update(file_values)
 
     if overrides:
@@ -242,7 +361,17 @@ def load_configuration(
     values["output_dir"] = Path(values["output_dir"])
     if values.get("csv_path") is not None:
         values["csv_path"] = Path(values["csv_path"])
-    for path_name in ("instrument_registry_path", "positions_path", "cash_path"):
+    for path_name in (
+        "instrument_registry_path",
+        "positions_path",
+        "cash_path",
+        "positions_history_path",
+        "cash_history_path",
+        "stress_catalog_path",
+    ):
         if values.get(path_name) is not None:
             values[path_name] = Path(values[path_name])
     return AnalysisConfig(**values)
+
+
+__all__ = ["DEFAULT_CONFIGURATION", "AnalysisConfig", "load_configuration"]

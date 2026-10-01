@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "historical-asset-risk-engine"
-version = "0.1.1"
+version = "0.2.0"
 description = "A historical asset-risk analysis engine for adjusted daily prices and portfolios."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -53,7 +53,10 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["B", "E", "F", "I", "UP"]
+# RUF022 keeps ``__all__`` grouped (constants, classes, functions) and sorted.
+# A rename that lands a name in the wrong slot is then a lint failure, not a
+# silent drift.
+select = ["B", "E", "F", "I", "RUF022", "UP"]
 
 [tool.mypy]
 python_version = "3.12"

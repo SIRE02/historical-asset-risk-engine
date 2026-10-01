@@ -107,3 +107,36 @@ def test_portfolio_paths_are_all_or_nothing_and_serialized(tmp_path: Path) -> No
     )
     assert config.portfolio_enabled is True
     assert config.to_dict()["instrument_registry_path"] == str(registry)
+
+
+def test_file_paths_resolve_against_the_config_folder_and_flags_against_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_dir = tmp_path / "project" / "configs"
+    (config_dir / "data").mkdir(parents=True)
+    (config_dir / "data" / "prices.csv").write_text("date,ticker,adjusted_close\n")
+    config_path = config_dir / "analysis.toml"
+    config_path.write_text(
+        "[analysis]\n"
+        'provider = "csv"\n'
+        'csv_path = "data/prices.csv"\n'
+        'output_dir = "../outputs/run"\n',
+        encoding="utf-8",
+    )
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    config = load_configuration(config_path)
+    assert config.csv_path == config_dir / "data" / "prices.csv"
+    assert config.output_dir == tmp_path / "project" / "outputs" / "run"
+
+    # A command-line path is relative to where the command runs.
+    (elsewhere / "flag.csv").write_text("date,ticker,adjusted_close\n")
+    flagged = load_configuration(config_path, {"csv_path": Path("flag.csv")})
+    assert flagged.csv_path == Path("flag.csv")
+    # A default the file does not set keeps its working-directory meaning.
+    defaulted = load_configuration(
+        None, {"provider": "csv", "csv_path": Path("flag.csv")}
+    )
+    assert defaulted.output_dir == Path("outputs")

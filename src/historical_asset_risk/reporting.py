@@ -92,6 +92,32 @@ def _git_commit() -> str | None:
     return result.stdout.strip() or None
 
 
+def _git_worktree_dirty() -> bool | None:
+    """Return whether tracked files differ from ``git_commit``, if knowable.
+
+    ``None`` means not checked: an installed copy has no working tree, and a
+    checkout where git fails cannot be inspected. Untracked files do not count,
+    matching ``git describe --dirty``.
+    """
+    if _installed_vcs_commit() is not None:
+        return None
+    repository_root = _source_repository_root()
+    if repository_root is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            check=True,
+            capture_output=True,
+            cwd=repository_root,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return bool(result.stdout.strip())
+
+
 def build_run_manifest(
     config: AnalysisConfig,
     market_data: MarketDataResult,
@@ -107,6 +133,7 @@ def build_run_manifest(
         "project": "historical-asset-risk-engine",
         "project_version": __version__,
         "git_commit": _git_commit(),
+        "git_worktree_dirty": _git_worktree_dirty(),
         "execution_timestamp": datetime.now(UTC).isoformat(),
         "configuration": config.to_dict(),
         "estimation_conventions": estimation_conventions(
@@ -126,6 +153,7 @@ def build_run_manifest(
             "actual_end_date": quality["last_common_date"],
             "observation_count": quality["common_date_count_after_alignment"],
             "instruments": list(market_data.prices.columns),
+            "price_content_hash": market_data.price_content_hash,
             "canonical_record_stage": (
                 "normalized_requested_in_range_pre_complete_case_alignment"
             ),
@@ -163,6 +191,9 @@ def build_run_manifest(
                 "timezone": cash.market_timezone,
                 "source": snapshot.calendar_source,
                 "version": snapshot.calendar_version,
+                "price_date_policy": (
+                    "fail_unless_aligned_price_dates_are_consecutive_sessions"
+                ),
             },
             "input_sources": {
                 name: {
@@ -208,3 +239,6 @@ def build_run_manifest(
 def persist_run_manifest(manifest: dict[str, Any], path: Path) -> None:
     """Write a deterministic, human-readable JSON manifest."""
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
+__all__ = ["build_run_manifest", "persist_run_manifest"]

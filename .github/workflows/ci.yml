@@ -51,5 +51,5 @@ jobs:
           python -m venv "$RUNNER_TEMP/historical-asset-risk-clean"
           "$RUNNER_TEMP/historical-asset-risk-clean/bin/python" -m pip install dist/*.whl
           cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/historical-asset-risk-clean/bin/python" -c "import historical_asset_risk; assert historical_asset_risk.__version__ == '0.1.1'"
+          "$RUNNER_TEMP/historical-asset-risk-clean/bin/python" -c "import historical_asset_risk; assert historical_asset_risk.__version__ == '0.2.0'"
           "$RUNNER_TEMP/historical-asset-risk-clean/bin/historical-asset-risk" --help

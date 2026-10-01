@@ -1,9 +1,11 @@
-"""Deterministic, versioned market-session validation used by Phase 3."""
+"""Deterministic, versioned market-session validation for portfolio books."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, timedelta
+from functools import cache
 
 from historical_asset_risk.contracts import PortfolioCalendarError
 
@@ -70,7 +72,9 @@ def _easter_sunday(year: int) -> date:
     return date(year, month, day)
 
 
-def _holidays(year: int) -> set[date]:
+# Cached because a portfolio run checks every aligned price date.
+@cache
+def _holidays(year: int) -> frozenset[date]:
     holidays = {
         _nth_weekday(year, 2, 0, 3),  # Washington's Birthday
         _easter_sunday(year) - timedelta(days=2),  # Good Friday
@@ -89,7 +93,7 @@ def _holidays(year: int) -> set[date]:
         holidays.add(_nth_weekday(year, 1, 0, 3))  # MLK Day
     if year >= 2022:
         holidays.add(_observed(date(year, 6, 19)))  # Juneteenth
-    return holidays
+    return frozenset(holidays)
 
 
 @dataclass(frozen=True)
@@ -114,6 +118,61 @@ class MarketCalendar:
             and session_date not in _SPECIAL_CLOSURES
         )
 
+    def require_consecutive_sessions(self, observed: Iterable[date]) -> None:
+        """Fail unless ``observed`` dates are consecutive sessions on this calendar.
+
+        A daily return between two observed dates is a one-session return only
+        when no session lies between them. Complete-case alignment already
+        fails on a hole in one instrument; a session missing from every
+        instrument leaves no hole to see, so only the calendar can catch it.
+        """
+        ordered = sorted(set(observed))
+        non_sessions = [day for day in ordered if not self.is_session(day)]
+        if non_sessions:
+            examples = ", ".join(day.isoformat() for day in non_sessions[:3])
+            raise PortfolioCalendarError(
+                f"Adjusted prices are dated on non-{self.calendar_id} sessions: "
+                f"{examples}."
+            )
+        gaps: list[str] = []
+        for previous, current in zip(ordered, ordered[1:], strict=False):
+            missing: list[date] = []
+            candidate = self.next_session(previous)
+            while candidate < current:
+                missing.append(candidate)
+                candidate = self.next_session(candidate)
+            if missing:
+                skipped = ", ".join(day.isoformat() for day in missing[:3])
+                gaps.append(
+                    f"{previous.isoformat()} to {current.isoformat()} "
+                    f"(missing {skipped})"
+                )
+        if gaps:
+            raise PortfolioCalendarError(
+                f"Adjusted prices skip {self.calendar_id} session(s): "
+                f"{'; '.join(gaps[:3])}. A return across them would span more "
+                "than one session but be treated as one day."
+            )
+
+    def next_session(self, session_date: date) -> date:
+        """Return the first valid session strictly after ``session_date``.
+
+        Used for one-day proxy realization: a realization after the close on
+        date ``t`` is aligned to the next valid session on this calendar, not
+        necessarily the next civil day.
+        """
+        candidate = session_date + timedelta(days=1)
+        # A single week never contains more than the weekend plus a short run of
+        # holidays; the supported-year guard in ``is_session`` bounds the search.
+        for _ in range(10):
+            if self.is_session(candidate):
+                return candidate
+            candidate += timedelta(days=1)
+        raise PortfolioCalendarError(
+            f"No {self.calendar_id} session found within 10 days after "
+            f"{session_date.isoformat()}."
+        )
+
 
 def resolve_market_calendar(
     calendar_id: str, required_version: str | None = None
@@ -136,7 +195,7 @@ def resolve_market_calendar(
 __all__ = [
     "CALENDAR_SOURCE",
     "CALENDAR_VERSION",
-    "MarketCalendar",
     "SUPPORTED_MARKET_TIMEZONE",
+    "MarketCalendar",
     "resolve_market_calendar",
 ]
