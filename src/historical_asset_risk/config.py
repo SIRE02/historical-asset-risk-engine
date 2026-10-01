@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -289,11 +290,40 @@ def _read_config_file(path: Path) -> dict[str, Any]:
     return loaded
 
 
+_PATH_OPTIONS = (
+    "output_dir",
+    "csv_path",
+    "instrument_registry_path",
+    "positions_path",
+    "cash_path",
+    "positions_history_path",
+    "cash_history_path",
+    "stress_catalog_path",
+)
+
+
+def _resolve_file_path(config_directory: Path, value: object) -> Path:
+    """Resolve a path written in a config file against that file's folder.
+
+    A config then means the same thing from any working directory. Absolute
+    and ``~`` paths are kept as written.
+    """
+    path = Path(str(value)).expanduser()
+    if path.is_absolute():
+        return path
+    return Path(os.path.normpath(config_directory / path))
+
+
 def load_configuration(
     config_path: Path | None = None,
     overrides: Mapping[str, Any] | None = None,
 ) -> AnalysisConfig:
-    """Merge defaults, an optional TOML/JSON file, and command-line overrides."""
+    """Merge defaults, an optional TOML/JSON file, and command-line overrides.
+
+    Relative paths in the file resolve against the file's folder. Relative
+    paths given as overrides (command-line flags) resolve against the working
+    directory, like any other command-line path.
+    """
     values = dict(DEFAULT_CONFIGURATION)
     if config_path is not None:
         path = Path(config_path)
@@ -301,6 +331,9 @@ def load_configuration(
         unknown = sorted(set(file_values) - set(DEFAULT_CONFIGURATION))
         if unknown:
             raise ValueError(f"Unknown configuration option(s): {', '.join(unknown)}")
+        for name in _PATH_OPTIONS:
+            if file_values.get(name) is not None:
+                file_values[name] = _resolve_file_path(path.parent, file_values[name])
         values.update(file_values)
 
     if overrides:

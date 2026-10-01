@@ -66,6 +66,13 @@ complete and their contracts are released as `experimental`.
 - A rerun into an existing output directory removes engine-owned artifacts it
   no longer writes, and a run without a portfolio refuses a directory that
   holds a portfolio run.
+- **Breaking:** relative paths written in a configuration file now resolve
+  against that file's folder instead of the working directory, so a
+  configuration means the same thing wherever the command runs. Command-line
+  path flags still resolve against the working directory. A configuration
+  whose paths were written relative to the folder it was run from must be
+  updated; the bundled `examples/config.*.toml` now use `data/...` and
+  `../outputs/...`, and `config.example.toml` (at the repo root) is unchanged.
 
 ### Fixed
 

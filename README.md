@@ -143,6 +143,12 @@ historical-asset-risk --config analysis.toml
 
 Precedence is command line, then configuration file, then built-in defaults.
 
+Relative paths written in a configuration file (`csv_path`, `output_dir`, the
+portfolio and history paths, `stress_catalog_path`) resolve against that
+file's folder, so a configuration means the same thing from any working
+directory. Paths given as command-line flags resolve against the directory the
+command runs in.
+
 ## Market-data inputs
 
 ### Yahoo Finance

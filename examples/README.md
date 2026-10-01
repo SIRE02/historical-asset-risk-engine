@@ -37,6 +37,11 @@ historical-asset-risk --config examples/config.long_only.toml
 historical-asset-risk --config config.example.toml
 ```
 
+Paths inside each configuration resolve against the configuration's own folder.
+The commands above run from the repo root, but any working directory works as
+long as `--config` points at the file; outputs land in the repo-root `outputs/`
+folder either way.
+
 Each run writes to its own `output_dir`: the frozen return artifacts, the
 valuation and exposure tables, the P&L / covariance / Euler artifacts, and
 the VaR / ES / comparison / stress artifacts, plus the

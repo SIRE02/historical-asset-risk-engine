@@ -25,14 +25,15 @@ def test_committed_example_configuration_resolves_full_market_settings() -> None
     assert config.rolling_min_observations == 63
     assert config.portfolio_enabled is True
     assert config.csv_path is None
-    assert config.instrument_registry_path == Path(
-        "examples/data/instrument_registry.csv"
-    )
-    assert config.positions_path == Path("examples/data/positions_market.csv")
-    assert config.cash_path == Path("examples/data/cash_market.csv")
+    # Paths in the file resolve against the file's folder, the repo root here.
+    examples = _REPO_ROOT / "examples"
+    assert config.instrument_registry_path == examples / "data/instrument_registry.csv"
+    assert config.positions_path == examples / "data/positions_market.csv"
+    assert config.cash_path == examples / "data/cash_market.csv"
     assert config.tail_risk_confidence_level == 0.99
     assert config.tail_risk_window == 252
-    assert config.stress_catalog_path == Path("examples/stress_catalog.example.json")
+    assert config.stress_catalog_path == examples / "stress_catalog.example.json"
+    assert config.output_dir == _REPO_ROOT / "outputs/example"
 
 
 @pytest.mark.parametrize(
@@ -42,18 +43,22 @@ def test_committed_example_configuration_resolves_full_market_settings() -> None
         ("config.long_only.toml", "outputs/example-long-only"),
     ],
 )
-def test_offline_portfolio_examples_run_from_repo_root(
+def test_offline_portfolio_examples_run_from_any_directory(
     config_name: str,
     expected_dir: str,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Run from a directory unrelated to the repository: the config's own
+    # folder, not the working directory, anchors its relative paths.
+    monkeypatch.chdir(tmp_path)
     config = load_configuration(_REPO_ROOT / "examples" / config_name)
     assert config.provider == "csv"
-    assert str(config.output_dir) == str(Path(expected_dir))
-    assert config.stress_catalog_path == Path("examples/stress_catalog.example.json")
+    assert config.output_dir == _REPO_ROOT / expected_dir
+    assert config.stress_catalog_path == (
+        _REPO_ROOT / "examples" / "stress_catalog.example.json"
+    )
 
-    monkeypatch.chdir(_REPO_ROOT)
     monkeypatch.setattr(
         cli, "plot_rolling_volatility", lambda _d, p, _w: p.write_bytes(b"c")
     )
