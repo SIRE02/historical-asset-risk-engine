@@ -187,11 +187,16 @@ provider-specific split or distribution adjustments.
 
 - Yahoo and CSV records use the same normalization and validation.
 - Missing, nonnumeric, zero, and negative prices are never filled.
-- Duplicate date/ticker rows keep the last source row and are disclosed.
+- Duplicate date/ticker rows keep the last valid source row and are disclosed.
+  A missing or invalid duplicate never replaces a valid price.
 - A date is retained only when every requested asset has a valid price.
 - Prices are never forward-filled.
 - The run fails if alignment would create a return spanning an intervening
   provider observation date.
+- Portfolio runs also fail unless the aligned price dates are consecutive
+  sessions on the portfolio calendar. This catches a session missing from
+  every ticker, which leaves no provider date to compare against. Returns-only
+  runs have no calendar and get only the provider-date check.
 - Rolling analysis requires at least `rolling_min_observations + 1` aligned prices.
 - The combined return summary requires at least four non-missing log returns per
   asset.

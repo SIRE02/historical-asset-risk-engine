@@ -19,6 +19,11 @@ timestamps inconsistent with the session, unknown instrument ids, duplicate
 identifiers, reused snapshot ids for different content, and unsupported
 instrument types (including leveraged or inverse ETFs).
 
+A portfolio run also requires the aligned adjusted-price dates to be
+consecutive sessions on the portfolio calendar. A price on a non-session, or a
+session missing from every instrument, fails the run: the return across that
+hole would cover more than one session but be treated as one day.
+
 ## Valuation and exposure
 
 ```

@@ -87,11 +87,7 @@ def normalize_and_validate(
     data = data.loc[
         data["date"].notna() & (data["date"] >= start) & (data["date"] < end)
     ]
-    duplicate_rows = int(data.duplicated(subset=["date", "ticker"], keep="last").sum())
-    data = data.drop_duplicates(subset=["date", "ticker"], keep="last")
-
     source_prices = data["adjusted_close"]
-    scoped_missing_prices = int(source_prices.isna().sum())
     numeric_prices = pd.to_numeric(source_prices, errors="coerce")
     nonnumeric_prices = source_prices.notna() & numeric_prices.isna()
     # ``to_numeric`` parses "inf"; an infinite price would otherwise survive as
@@ -99,9 +95,29 @@ def normalize_and_validate(
     unusable_prices = numeric_prices.notna() & (
         (numeric_prices <= 0) | ~np.isfinite(numeric_prices)
     )
-    invalid_prices = int((nonnumeric_prices | unusable_prices).sum())
-    data["adjusted_close"] = numeric_prices.mask(unusable_prices)
-    data = data.sort_values(["date", "ticker"]).reset_index(drop=True)
+    data = data.assign(
+        adjusted_close=numeric_prices.mask(unusable_prices),
+        source_missing=source_prices.isna(),
+        invalid=nonnumeric_prices | unusable_prices,
+        source_order=np.arange(len(data)),
+    )
+    # A later row for the same date and instrument replaces an earlier one,
+    # except that a missing or invalid price never replaces a valid one: valid
+    # rows sort last, so ``keep="last"`` picks the last valid row when one
+    # exists. Validity is decided before deduplication for that reason.
+    data = data.assign(usable=data["adjusted_close"].notna()).sort_values(
+        ["usable", "source_order"], kind="stable"
+    )
+    duplicate_rows = int(data.duplicated(subset=["date", "ticker"], keep="last").sum())
+    data = data.drop_duplicates(subset=["date", "ticker"], keep="last")
+    # Both counts describe the deduplicated records, as before.
+    scoped_missing_prices = int(data["source_missing"].sum())
+    invalid_prices = int(data["invalid"].sum())
+    data = (
+        data.loc[:, list(CANONICAL_COLUMNS)]
+        .sort_values(["date", "ticker"])
+        .reset_index(drop=True)
+    )
 
     returned = sorted(
         data.loc[data["adjusted_close"].notna(), "ticker"].unique().tolist()

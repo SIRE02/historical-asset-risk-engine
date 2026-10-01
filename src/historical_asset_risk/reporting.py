@@ -164,6 +164,9 @@ def build_run_manifest(
                 "timezone": cash.market_timezone,
                 "source": snapshot.calendar_source,
                 "version": snapshot.calendar_version,
+                "price_date_policy": (
+                    "fail_unless_aligned_price_dates_are_consecutive_sessions"
+                ),
             },
             "input_sources": {
                 name: {

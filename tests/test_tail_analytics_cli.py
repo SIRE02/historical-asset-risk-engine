@@ -325,3 +325,28 @@ def test_manifest_price_hash_matches_the_written_prices(tmp_path: Path) -> None:
         output_dir / "adjusted_prices.csv", index_col="date", parse_dates=["date"]
     )
     assert manifest["data_source"]["price_content_hash"] == price_content_hash(written)
+
+
+def test_portfolio_run_rejects_a_session_missing_from_every_ticker(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path, tmp_path / "out", portfolio=True)
+    prices_path = tmp_path / "prices.csv"
+    prices = pd.read_csv(prices_path)
+    prices.loc[prices["date"] != "2024-01-08"].to_csv(prices_path, index=False)
+
+    with pytest.raises(ValueError, match=r"skip XNYS session.*missing 2024-01-08"):
+        cli.run_analysis(config)
+    assert not (tmp_path / "out").exists()
+
+    # A returns-only run has no calendar, so the provider-union rule is the
+    # only gap check it gets; it still runs on the same prices.
+    returns_only = replace(
+        config,
+        instrument_registry_path=None,
+        positions_path=None,
+        cash_path=None,
+        output_dir=tmp_path / "r",
+    )
+    cli.run_analysis(returns_only)
+    assert (tmp_path / "r" / "simple_returns.csv").is_file()

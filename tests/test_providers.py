@@ -122,13 +122,46 @@ def test_yahoo_acquisition_disables_internal_download_threads(
 
 def test_quality_report_counts_duplicates_invalid_prices_and_alignment() -> None:
     records = _canonical(_prices())
+    last_bbb = (records["ticker"] == "BBB") & (records["date"] == "2024-01-08")
+    records.loc[last_bbb, "adjusted_close"] = -1
     records = pd.concat(
         [
             records,
             pd.DataFrame(
+                [{"date": "2024-01-02", "ticker": "AAA", "adjusted_close": 100.5}]
+            ),
+        ],
+        ignore_index=True,
+    )
+    config = AnalysisConfig(
+        tickers=("AAA", "BBB"),
+        start_date="2024-01-01",
+        end_date="2024-02-01",
+        rolling_window=2,
+    )
+    prices, _normalized, quality = normalize_and_validate(records, config)
+
+    assert quality["duplicate_date_instrument_rows_removed"] == 1
+    assert quality["invalid_price_values_removed"] == 1
+    assert quality["common_history_rows_removed"] == 1
+    assert len(prices) == 4
+
+
+def test_invalid_duplicate_never_replaces_a_valid_price() -> None:
+    def duplicate(day: str, ticker: str, value: object) -> dict[str, object]:
+        return {"date": day, "ticker": ticker, "adjusted_close": value}
+
+    records = pd.concat(
+        [
+            _canonical(_prices()),
+            pd.DataFrame(
                 [
-                    {"date": "2024-01-02", "ticker": "AAA", "adjusted_close": 100.5},
-                    {"date": "2024-01-08", "ticker": "BBB", "adjusted_close": -1},
+                    # Valid then invalid: the valid original survives.
+                    duplicate("2024-01-03", "AAA", -1),
+                    # Valid then nonnumeric: the valid original survives.
+                    duplicate("2024-01-04", "BBB", "n/a"),
+                    # Valid then valid: the later row is a correction and wins.
+                    duplicate("2024-01-05", "AAA", 104.5),
                 ]
             ),
         ],
@@ -142,10 +175,24 @@ def test_quality_report_counts_duplicates_invalid_prices_and_alignment() -> None
     )
     prices, _normalized, quality = normalize_and_validate(records, config)
 
-    assert quality["duplicate_date_instrument_rows_removed"] == 2
-    assert quality["invalid_price_values_removed"] == 1
-    assert quality["common_history_rows_removed"] == 1
-    assert len(prices) == 4
+    assert quality["duplicate_date_instrument_rows_removed"] == 3
+    assert quality["invalid_price_values_removed"] == 0
+    assert len(prices) == 5
+    assert prices.loc["2024-01-03", "AAA"] == 101.0
+    assert prices.loc["2024-01-04", "BBB"] == 52.0
+    assert prices.loc["2024-01-05", "AAA"] == 104.5
+
+    # Invalid first, valid last also keeps the valid row.
+    reversed_order = pd.concat(
+        [
+            pd.DataFrame([duplicate("2024-01-03", "AAA", -1)]),
+            _canonical(_prices()),
+        ],
+        ignore_index=True,
+    )
+    prices, _normalized, quality = normalize_and_validate(reversed_order, config)
+    assert quality["invalid_price_values_removed"] == 0
+    assert prices.loc["2024-01-03", "AAA"] == 101.0
 
 
 def test_infinite_prices_are_invalid_not_valid_observations() -> None:

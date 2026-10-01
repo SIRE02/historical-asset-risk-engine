@@ -36,6 +36,7 @@ from historical_asset_risk.data_loader import (
     persist_acquisition,
     persist_quality_report,
 )
+from historical_asset_risk.market_calendar import resolve_market_calendar
 from historical_asset_risk.pnl import ProxyExposureSnapshot, compute_data_snapshot_id
 from historical_asset_risk.portfolio import (
     calculate_currency_valuation,
@@ -283,6 +284,10 @@ def run_analysis(
     )
     market_data = load_market_data(config, selected_provider)
     prices = market_data.prices
+    if portfolio is not None:
+        resolve_market_calendar(
+            portfolio.snapshot.cash.market_calendar_id
+        ).require_consecutive_sessions(day.date() for day in prices.index)
     simple_returns = calculate_simple_returns(prices)
     log_returns = calculate_log_returns(prices)
     return_summary = summarize_returns(

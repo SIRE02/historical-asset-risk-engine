@@ -14,8 +14,11 @@ log_return(t)    = log(P(t) / P(t - 1))
 Simple and log returns are kept as separate, visibly named artifacts. Invalid
 observations (non-positive prices, gaps) fail; nothing is forward-filled.
 Complete-case alignment across instruments; a retained return interval that
-would span a non-consecutive session pair fails rather than being treated as a
-daily return.
+would span another instrument's observation date fails rather than being
+treated as a daily return. This layer has no market calendar, so a session
+missing from every instrument is not detected here; portfolio runs add that
+check against the portfolio calendar
+([`portfolio-contract.md`](portfolio-contract.md)).
 
 - **Artifacts:** `simple_returns.csv`, `log_returns.csv` (frozen consumer
   files), `return_summary.csv`.

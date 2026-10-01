@@ -12,6 +12,7 @@ from historical_asset_risk.contracts import (
     Instrument,
     InstrumentType,
     NonPositivePortfolioValueError,
+    PortfolioCalendarError,
     PortfolioCurrencyError,
     PortfolioDateError,
     PortfolioDuplicateError,
@@ -326,6 +327,23 @@ def test_xnys_does_not_observe_saturday_new_year_on_preceding_friday() -> None:
 
     assert calendar.is_session(date(2021, 12, 31))
     assert calendar.is_session(date(2027, 12, 31))
+
+
+def test_consecutive_sessions_allow_weekends_and_holidays_but_not_gaps() -> None:
+    calendar = resolve_market_calendar("XNYS")
+    # Fri 2024-01-12 -> Tue 2024-01-16 crosses a weekend and MLK Day: consecutive.
+    calendar.require_consecutive_sessions(
+        [date(2024, 1, 11), date(2024, 1, 12), date(2024, 1, 16)]
+    )
+
+    with pytest.raises(PortfolioCalendarError, match=r"missing 2024-01-08"):
+        calendar.require_consecutive_sessions(
+            [date(2024, 1, 4), date(2024, 1, 5), date(2024, 1, 9)]
+        )
+    with pytest.raises(PortfolioCalendarError, match="non-XNYS sessions: 2024-01-15"):
+        calendar.require_consecutive_sessions(
+            [date(2024, 1, 12), date(2024, 1, 15), date(2024, 1, 16)]
+        )
 
 
 @pytest.mark.parametrize(

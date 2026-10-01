@@ -88,6 +88,18 @@ complete and their contracts are released as `experimental`.
   `tail_analytics.trailing.window`.
 - Identical tail-sample warnings were stored twice in
   `data_quality_report.json`.
+- A session missing from every ticker passed alignment, because the gap check
+  compares tickers against each other and none had that date. The return
+  across it covered two sessions but entered P&L, covariance and VaR/ES as one
+  day. Portfolio runs now require the aligned price dates to be consecutive
+  sessions on the portfolio calendar (`portfolio.calendar.price_date_policy`
+  in `run_manifest.json`). Returns-only runs have no calendar and keep the
+  provider-date check alone.
+- A duplicate date/ticker row replaced the earlier row before prices were
+  validated, so a later invalid duplicate discarded a valid price and could
+  cost the date its place in the aligned sample. Validity is now decided
+  first, and the last valid row wins; `duplicate_date_instrument_rows_removed`
+  still counts every dropped row.
 - Stress shocks below `-1` are rejected.
 - A proxy snapshot on 2035-12-31, the calendar's last session, raised instead
   of being recorded as `missing_target_return`.
