@@ -7,8 +7,9 @@ of snapshots (P&L and tail-risk histories) reuses this same row schema.
 ## Input contracts
 
 A versioned instrument registry, position rows, and exactly one explicit cash
-record per snapshot. Every instrument uses the portfolio calendar, timezone,
-and base currency (no FX conversion in the initial release). Valuation prices
+record per snapshot. Every held instrument uses the portfolio calendar,
+timezone, and base currency (no FX conversion in the initial release); registry
+rows the snapshot does not hold need only unique identifiers. Valuation prices
 are a separately named as-of market price - never a silently substituted
 adjusted close. Cash is an explicit signed base-currency amount; zero cash is
 a valid explicit record.

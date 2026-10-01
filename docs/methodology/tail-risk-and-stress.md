@@ -100,7 +100,9 @@ immutable and its `content_hash` is re-verified on load.
   explicit session range with `historical_shock_vector`:
   `cumulative_shock[i] = product(1 + simple_return[i, d]) - 1`. A run applies
   the stored, hash-verified shocks and never re-derives them, so a published
-  scenario does not change when the price file does.
+  scenario does not change when the price file does. A historical scenario
+  must record `session_start` and `session_end`; a hypothetical one gives both
+  or neither. Both are exact `YYYY-MM-DD` dates with start no later than end.
 - **Hypothetical** scenarios are explicit `instrument_id` simple-return shocks
   `q[i]`.
 - Every shock is finite and at least `-1`: a simple return cannot fall below

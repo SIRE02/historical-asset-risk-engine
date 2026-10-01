@@ -350,3 +350,24 @@ def test_portfolio_run_rejects_a_session_missing_from_every_ticker(
     )
     cli.run_analysis(returns_only)
     assert (tmp_path / "r" / "simple_returns.csv").is_file()
+
+
+def test_history_holding_an_unpriced_instrument_fails_naming_it(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path, tmp_path / "out", portfolio=True, history=True)
+    with (tmp_path / "registry.csv").open("a", encoding="utf-8") as registry:
+        registry.write(
+            "US_TLT,TLT,XNAS,standard_etf,USD,XNYS,America/New_York,"
+            "fixture:TLT,total-return adjusted close\n"
+        )
+    with (tmp_path / "ph.csv").open("a", encoding="utf-8") as history:
+        history.write(
+            "h2,portfolio-1,2024-01-09,US_TLT,5,90,"
+            "2024-01-09T16:00:00-05:00,fixture,hr3\n"
+        )
+
+    # The documented reason `missing_instrument_return` never appears in a CLI
+    # run: the history is checked against the priced tickers before any P&L.
+    with pytest.raises(ValueError, match="missing from the selected.*TLT"):
+        cli.run_analysis(config)

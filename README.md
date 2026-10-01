@@ -372,7 +372,9 @@ Unknown columns are rejected. Additional rules:
 - Every held instrument exists in the registry. When a market-data universe is
   supplied, every held provider ticker must also be selected.
 - Registry identifiers and position source-row identifiers are unique.
-- Instruments share the portfolio base currency, calendar, and timezone.
+- Held instruments share the portfolio base currency, calendar, and timezone,
+  and have a supported type. Registry rows a snapshot does not hold are checked
+  only for unique identifiers, so one registry can serve several books.
 - The built-in `XNYS` calendar covers 1990–2035 and requires
   `America/New_York`.
 - Snapshot and price timestamps include a UTC offset consistent with that timezone
@@ -495,14 +497,18 @@ dates, per-instrument counts, duplicates, invalid/missing prices, alignment
 reduction, and optional portfolio reconciliation.
 
 `missing_adjusted_close_values` covers requested, in-range, deduplicated records.
-`source_missing_adjusted_close_values` covers the provider-normalized source before
-scope filters.
+`source_missing_adjusted_close_values`, `source_row_count`, and
+`invalid_date_count` cover the provider-normalized source before scope filters,
+including rows for tickers that were not requested.
 
 `run_manifest.json` records:
 
 - Package version, source commit when available, and execution time. VCS installs
   use their immutable installation metadata; editable source checkouts query only
   this package's repository, never the caller's working directory.
+  `git_worktree_dirty` is `true` when tracked files differ from that commit,
+  `false` when they match, and `null` when it cannot be checked (an installed
+  copy, or git unavailable). Untracked files do not count.
 - Effective configuration
 - Actual provider, source, read/acquisition time, range, and instruments, plus
   `price_content_hash`, a SHA-256 of the aligned adjusted prices. It feeds the

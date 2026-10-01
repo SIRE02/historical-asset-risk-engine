@@ -92,6 +92,32 @@ def _git_commit() -> str | None:
     return result.stdout.strip() or None
 
 
+def _git_worktree_dirty() -> bool | None:
+    """Return whether tracked files differ from ``git_commit``, if knowable.
+
+    ``None`` means not checked: an installed copy has no working tree, and a
+    checkout where git fails cannot be inspected. Untracked files do not count,
+    matching ``git describe --dirty``.
+    """
+    if _installed_vcs_commit() is not None:
+        return None
+    repository_root = _source_repository_root()
+    if repository_root is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            check=True,
+            capture_output=True,
+            cwd=repository_root,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return bool(result.stdout.strip())
+
+
 def build_run_manifest(
     config: AnalysisConfig,
     market_data: MarketDataResult,
@@ -107,6 +133,7 @@ def build_run_manifest(
         "project": "historical-asset-risk-engine",
         "project_version": __version__,
         "git_commit": _git_commit(),
+        "git_worktree_dirty": _git_worktree_dirty(),
         "execution_timestamp": datetime.now(UTC).isoformat(),
         "configuration": config.to_dict(),
         "estimation_conventions": estimation_conventions(

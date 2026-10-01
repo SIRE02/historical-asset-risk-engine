@@ -21,6 +21,7 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -146,6 +147,55 @@ def _parse_shocks(raw: Any, scenario_id: str) -> tuple[InstrumentShock, ...]:
     return tuple(shocks)
 
 
+def _parse_session_date(value: object, field: str, scenario_id: str) -> str:
+    text = str(value)
+    parsed: date | None
+    try:
+        parsed = date.fromisoformat(text)
+    except ValueError:
+        parsed = None
+    # Exactly YYYY-MM-DD: the string is hashed as written, so a looser form
+    # such as "20081006" would be a second spelling of the same identity.
+    if parsed is None or parsed.isoformat() != text:
+        raise StressScenarioError(
+            f"Scenario {scenario_id!r} {field} must be a YYYY-MM-DD date; "
+            f"received {value!r}."
+        )
+    return text
+
+
+def _parse_session_range(
+    raw: Mapping[str, Any], scenario_id: str, kind: str
+) -> tuple[str | None, str | None]:
+    """Return the scenario's session range, both ends or neither.
+
+    A historical scenario records the sessions its shocks were derived from,
+    so it requires both ends. A hypothetical one may omit them.
+    """
+    start_raw = raw.get("session_start")
+    end_raw = raw.get("session_end")
+    if start_raw is None and end_raw is None:
+        if kind == "historical":
+            raise StressScenarioError(
+                f"Historical scenario {scenario_id!r} needs session_start and "
+                "session_end."
+            )
+        return None, None
+    if start_raw is None or end_raw is None:
+        raise StressScenarioError(
+            f"Scenario {scenario_id!r} must give both session_start and "
+            "session_end, or neither."
+        )
+    start = _parse_session_date(start_raw, "session_start", scenario_id)
+    end = _parse_session_date(end_raw, "session_end", scenario_id)
+    if start > end:
+        raise StressScenarioError(
+            f"Scenario {scenario_id!r} session_start {start} is after "
+            f"session_end {end}."
+        )
+    return start, end
+
+
 def load_stress_catalog(path: Path) -> tuple[StressScenario, ...]:
     """Load and hash-verify a stress-scenario catalog JSON file."""
     try:
@@ -193,10 +243,7 @@ def load_stress_catalog(path: Path) -> tuple[StressScenario, ...]:
             )
         name = str(raw.get("name", "")).strip() or scenario_id
         description = str(raw.get("description", "")).strip()
-        session_start = raw.get("session_start")
-        session_end = raw.get("session_end")
-        session_start = str(session_start) if session_start is not None else None
-        session_end = str(session_end) if session_end is not None else None
+        session_start, session_end = _parse_session_range(raw, scenario_id, kind)
         shocks = _parse_shocks(raw.get("shocks"), scenario_id)
 
         payload = canonical_scenario_payload(

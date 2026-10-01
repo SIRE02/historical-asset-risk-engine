@@ -47,10 +47,14 @@ whose target return is outside the sample, reached across a session gap, or
 missing a held instrument's return are reported with a non-`realized`
 `outcome_status` and a null P&L rather than dropped. A snapshot on the
 calendar's last supported session has no resolvable `t + 1`; it is reported as
-`missing_target_return` with an empty `target_period_end`. A CLI portfolio run
-rejects price dates that skip a session before P&L is computed, so
-`target_return_spans_session_gap` arises only when `proxy_realized_pnl` is
-called directly on such data.
+`missing_target_return` with an empty `target_period_end`.
+
+Two statuses arise only when `proxy_realized_pnl` is called directly, because
+a CLI run rejects their cause up front. `target_return_spans_session_gap`: the
+CLI fails price dates that skip a session. `missing_instrument_return`: the CLI
+validates every history snapshot against the selected tickers, so an
+instrument the history holds but the run does not price fails the run with the
+instrument named.
 
 - Adjusted total returns omit intraday position changes, fees, taxes,
   financing, and separately reconciled corporate-action cash flows. This is an

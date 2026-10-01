@@ -86,6 +86,51 @@ def test_catalog_rejects_a_shock_below_total_loss(tmp_path: Path) -> None:
         load_stress_catalog(beyond)
 
 
+def _with_sessions(
+    scenario_id: str, kind: str, start: object, end: object
+) -> dict[str, object]:
+    shocks = [InstrumentShock("US_SPY", -0.1)]
+    payload = canonical_scenario_payload(
+        scenario_id=scenario_id,
+        scenario_version="1",
+        name=scenario_id,
+        kind=kind,
+        description="fixture scenario",
+        shocks=shocks,
+        session_start=None if start is None else str(start),
+        session_end=None if end is None else str(end),
+    )
+    scenario = {**payload, "content_hash": scenario_content_hash(payload)}
+    # Store the raw values, so a non-string date reaches the loader as written.
+    return {**scenario, "session_start": start, "session_end": end}
+
+
+def test_historical_session_range_is_validated(tmp_path: Path) -> None:
+    valid = _catalog(
+        tmp_path, [_with_sessions("crash", "historical", "2008-10-06", "2008-10-10")]
+    )
+    scenario = load_stress_catalog(valid)[0]
+    assert (scenario.session_start, scenario.session_end) == (
+        "2008-10-06",
+        "2008-10-10",
+    )
+
+    rejected = [
+        (_with_sessions("x", "historical", None, None), "needs session_start"),
+        (_with_sessions("x", "hypothetical", "2008-10-06", None), "or neither"),
+        (_with_sessions("x", "historical", "banana", "2008-10-10"), "YYYY-MM-DD"),
+        (_with_sessions("x", "historical", "20081006", "2008-10-10"), "YYYY-MM-DD"),
+        (_with_sessions("x", "historical", "2008-10-10", "2008-10-06"), "is after"),
+    ]
+    for scenario_dict, message in rejected:
+        with pytest.raises(StressScenarioError, match=message):
+            load_stress_catalog(_catalog(tmp_path, [scenario_dict]))
+
+    # A hypothetical scenario may omit the range entirely.
+    hypothetical = _catalog(tmp_path, [_with_sessions("y", "hypothetical", None, None)])
+    assert load_stress_catalog(hypothetical)[0].session_start is None
+
+
 def test_catalog_rejects_duplicate_identity(tmp_path: Path) -> None:
     catalog = _catalog(
         tmp_path,

@@ -55,7 +55,8 @@ complete and their contracts are released as `experimental`.
   `log_returns.csv`, `data_quality_report.json`, `run_manifest.json`) keep
   their columns, units, schema ids and versions. The new `run_manifest.json`
   sections (`portfolio_analytics`, `tail_analytics`), the new
-  `data_source.price_content_hash` key, and the `data_quality_report.json`
+  `data_source.price_content_hash` and `git_worktree_dirty` keys, and the
+  `data_quality_report.json`
   sections (`portfolio.analytics`, `portfolio.tail`) are additive, and are
   `experimental` alongside the schemas they describe.
 - `data_snapshot_id` now also hashes `price_content_hash`, a SHA-256 of the
@@ -73,6 +74,11 @@ complete and their contracts are released as `experimental`.
   whose paths were written relative to the folder it was run from must be
   updated; the bundled `examples/config.*.toml` now use `data/...` and
   `../outputs/...`, and `config.example.toml` (at the repo root) is unchanged.
+- Eligibility, currency, calendar and timezone checks apply to the
+  instruments a snapshot holds. Other registry rows need only unique
+  identifiers, so one registry can list instruments a given book cannot hold.
+- `run_manifest.json` records `git_worktree_dirty`: whether tracked files
+  differed from `git_commit` (`null` when it cannot be checked).
 
 ### Fixed
 
@@ -107,7 +113,9 @@ complete and their contracts are released as `experimental`.
   cost the date its place in the aligned sample. Validity is now decided
   first, and the last valid row wins; `duplicate_date_instrument_rows_removed`
   still counts every dropped row.
-- Stress shocks below `-1` are rejected.
+- Stress shocks below `-1` are rejected. Scenario `session_start` and
+  `session_end` are validated as exact `YYYY-MM-DD` dates with start no later
+  than end, given both or neither, and required for historical scenarios.
 - A proxy snapshot on 2035-12-31, the calendar's last session, raised instead
   of being recorded as `missing_target_return`.
 - The methodology said estimation windows never use observations after
