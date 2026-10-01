@@ -77,6 +77,15 @@ def test_catalog_rejects_mutated_content_under_same_identity(tmp_path: Path) -> 
         load_stress_catalog(catalog)
 
 
+def test_catalog_rejects_a_shock_below_total_loss(tmp_path: Path) -> None:
+    total_loss = _catalog(tmp_path, [_scenario_dict("wipeout", {"US_SPY": -1.0})])
+    assert load_stress_catalog(total_loss)[0].shocks[0].simple_return_shock == -1.0
+
+    beyond = _catalog(tmp_path, [_scenario_dict("impossible", {"US_SPY": -1.2})])
+    with pytest.raises(StressScenarioError, match="cannot fall below -1"):
+        load_stress_catalog(beyond)
+
+
 def test_catalog_rejects_duplicate_identity(tmp_path: Path) -> None:
     catalog = _catalog(
         tmp_path,

@@ -31,11 +31,16 @@ from historical_asset_risk.contracts import (
 )
 from historical_asset_risk.estimation import SAMPLE_DDOF
 
-# Portfolio variance below this magnitude is treated as zero for the
-# division-by-volatility policy and for the non-negativity invariant.
+# Portfolio variance within this magnitude of zero is treated as zero for the
+# division-by-volatility policy and for the non-negativity invariant. It is the
+# floor of the scaled tolerance below.
 VARIANCE_ZERO_TOLERANCE = 1e-18
-# Reciprocal-condition-number threshold below which Sigma is flagged as
-# ill-conditioned / effectively singular.
+# Rounding noise in ``v' Sigma v`` scales with ``|v|' |Sigma| |v|``. A perfect
+# hedge on a singular Sigma lands a few ulps of that scale either side of zero,
+# so the zero / negative tests use this fraction of it.
+VARIANCE_RELATIVE_TOLERANCE = 1e-12
+# Condition-number threshold above which Sigma is flagged as ill-conditioned /
+# effectively singular.
 CONDITION_WARNING_THRESHOLD = 1e12
 
 
@@ -212,6 +217,11 @@ def _aligned_vector(
     return vector
 
 
+def _variance_tolerance(vector: np.ndarray, sigma: np.ndarray) -> float:
+    scale = float(np.abs(vector) @ np.abs(sigma) @ np.abs(vector))
+    return max(VARIANCE_ZERO_TOLERANCE, VARIANCE_RELATIVE_TOLERANCE * scale)
+
+
 def portfolio_risk_from_covariance(
     weights: Mapping[str, float],
     currency_exposures: Mapping[str, float],
@@ -241,22 +251,26 @@ def portfolio_risk_from_covariance(
 
     return_variance = float(weight_vector @ sigma @ weight_vector)
     currency_variance = float(exposure_vector @ sigma @ exposure_vector)
-    if return_variance < -VARIANCE_ZERO_TOLERANCE:
+    return_tolerance = _variance_tolerance(weight_vector, sigma)
+    currency_tolerance = _variance_tolerance(exposure_vector, sigma)
+    if return_variance < -return_tolerance:
         raise PortfolioCovarianceError(
             f"Portfolio return variance is negative ({return_variance:.3e}); the "
             "covariance matrix is not positive semidefinite."
         )
-    if currency_variance < -VARIANCE_ZERO_TOLERANCE:
+    if currency_variance < -currency_tolerance:
         raise PortfolioCovarianceError(
             f"Portfolio currency variance is negative ({currency_variance:.3e})."
         )
-    return_variance = max(return_variance, 0.0)
-    currency_variance = max(currency_variance, 0.0)
+    zero_volatility = return_variance <= return_tolerance
+    if zero_volatility:
+        return_variance = 0.0
+    if currency_variance <= currency_tolerance:
+        currency_variance = 0.0
     return_volatility = math.sqrt(return_variance)
     currency_volatility = math.sqrt(currency_variance)
     annualization = math.sqrt(float(observations_per_year))
 
-    zero_volatility = return_variance <= VARIANCE_ZERO_TOLERANCE
     covariance_vector = sigma @ weight_vector
     if zero_volatility:
         marginal = np.zeros_like(weight_vector)
@@ -315,6 +329,7 @@ def portfolio_risk_from_covariance(
 
 __all__ = [
     "CONDITION_WARNING_THRESHOLD",
+    "VARIANCE_RELATIVE_TOLERANCE",
     "VARIANCE_ZERO_TOLERANCE",
     "CovarianceConditionReport",
     "PortfolioRiskFromCovariance",

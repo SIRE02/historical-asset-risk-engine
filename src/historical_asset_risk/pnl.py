@@ -32,6 +32,7 @@ import pandas as pd
 from historical_asset_risk.contracts import (
     PORTFOLIO_ANALYTICS_SCHEMA_VERSION,
     Instrument,
+    PortfolioCalendarError,
     PortfolioReturnAlignmentError,
 )
 
@@ -42,8 +43,10 @@ def compute_data_snapshot_id(data_source: Mapping[str, Any]) -> str:
     """Derive a deterministic identity for the aligned market-data sample.
 
     The identity is a hash of the provider, source, realized date bounds,
-    observation count, and instrument identities recorded in the run manifest's
-    ``data_source`` block. The same market sample always yields the same id.
+    observation count, instrument identities, and ``price_content_hash``
+    recorded in the run manifest's ``data_source`` block. The same market
+    sample always yields the same id, and a revised price under the same dates
+    and source yields a different one.
     """
     material = {
         "provider": data_source.get("provider"),
@@ -52,6 +55,7 @@ def compute_data_snapshot_id(data_source: Mapping[str, Any]) -> str:
         "actual_end_date": data_source.get("actual_end_date"),
         "observation_count": data_source.get("observation_count"),
         "instruments": list(data_source.get("instruments", []) or []),
+        "price_content_hash": data_source.get("price_content_hash"),
     }
     payload = json.dumps(
         material,
@@ -368,8 +372,12 @@ def proxy_realized_pnl(
     end_positions = {pd.Timestamp(item): item for item in matrix.index}
     rows: list[dict[str, object]] = []
     for snap in ordered:
-        target_end = next_session(snap.as_of_date)
-        target_end_ts = pd.Timestamp(target_end)
+        try:
+            target_end: date | None = next_session(snap.as_of_date)
+        except PortfolioCalendarError:
+            # The book's session is the calendar's last supported one, so its
+            # target session cannot be resolved, let alone matched to a return.
+            target_end = None
         exposures = dict(snap.currency_exposures)
         missing_instruments = sorted(
             instrument_id
@@ -382,7 +390,7 @@ def proxy_realized_pnl(
             "exposure_snapshot_id": snap.exposure_snapshot_id,
             "as_of_date": snap.as_of_date.isoformat(),
             "target_period_start": snap.as_of_date.isoformat(),
-            "target_period_end": target_end.isoformat(),
+            "target_period_end": target_end.isoformat() if target_end else "",
             "market_calendar_id": snap.market_calendar_id,
             "held_instrument_count": len(exposures),
             "missing_instruments": ";".join(missing_instruments),
@@ -390,7 +398,8 @@ def proxy_realized_pnl(
             "proxy_realized_loss": math.nan,
             "outcome_status": "realized",
         }
-        if target_end_ts not in end_positions:
+        target_end_ts = pd.Timestamp(target_end) if target_end else None
+        if target_end_ts is None or target_end_ts not in end_positions:
             row["outcome_status"] = "missing_target_return"
             rows.append(row)
             continue

@@ -131,7 +131,7 @@ output_dir = "outputs"
 
 # Tail-risk knobs.
 # tail_risk_confidence_level = 0.95    # 0.5 < alpha < 1
-# tail_risk_window = 252               # trailing window; omit for the full sample
+# tail_risk_window = 252               # trailing series only; omit for all prior intervals
 # stress_catalog_path = "examples/stress_catalog.example.json"
 ```
 
@@ -255,6 +255,8 @@ Portfolio runs also measure the tail of that released loss sample:
   at each `as_of_date` from that day's snapshot; a risk report, not a forecast
 
 Set `--tail-risk-confidence-level` (default 0.95) and `--tail-risk-window`.
+The headline VaR/ES always use the full aligned sample; the window shortens
+only the trailing series.
 Passing `--stress-catalog-path` (a hash-verified scenario catalog JSON) applies
 named `instrument_id` simple-return shocks to the current book and writes
 `stress_scenario_catalog.json`, `stress_test_results.csv`, and
@@ -370,7 +372,9 @@ Unknown columns are rejected. Additional rules:
 - Reordering registry or position rows does not change this ID; changing normalized
   material content does.
 - A run refuses to overwrite a different exposure snapshot in the same output
-  directory.
+  directory, including with a run that has no portfolio. A rerun removes
+  engine-owned artifacts it no longer writes (for example stress files when
+  the catalog is dropped); other files in the directory are left alone.
 
 ## Python API
 
@@ -489,7 +493,10 @@ scope filters.
   use their immutable installation metadata; editable source checkouts query only
   this package's repository, never the caller's working directory.
 - Effective configuration
-- Actual provider, source, read/acquisition time, range, and instruments
+- Actual provider, source, read/acquisition time, range, and instruments, plus
+  `price_content_hash`, a SHA-256 of the aligned adjusted prices. It feeds the
+  `data_snapshot_id` that realization rows join on, so revised prices under the
+  same dates and source get a new id.
 - Dependency versions
 - Generated artifacts with schema identities, versions, and units
 - Estimation and missing-data conventions

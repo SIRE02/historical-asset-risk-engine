@@ -232,6 +232,28 @@ def test_proxy_realized_pnl_reports_missing_instrument_returns() -> None:
     assert pd.isna(row["proxy_realized_pnl"])
 
 
+def test_proxy_on_the_last_calendar_session_is_recorded_not_raised() -> None:
+    aligned = align_portfolio_simple_returns(
+        SIMPLE_RETURNS,
+        INSTRUMENTS,
+        held_instrument_ids=["US_SPY"],
+        price_index=PRICE_INDEX,
+        market_calendar_id="XNYS",
+        data_snapshot_id="data_test",
+    )
+    calendar = resolve_market_calendar("XNYS")
+    assert calendar.is_session(date(2035, 12, 31))
+    result = proxy_realized_pnl(
+        [_proxy_snapshot("2035-12-31", {"US_SPY": 1000.0})],
+        aligned,
+        next_session=calendar.next_session,
+    )
+    row = result.iloc[0]
+    assert row["outcome_status"] == "missing_target_return"
+    assert row["target_period_end"] == ""
+    assert pd.isna(row["proxy_realized_pnl"])
+
+
 def test_data_snapshot_id_is_deterministic_and_content_sensitive() -> None:
     base = {
         "provider": "csv",
@@ -240,7 +262,11 @@ def test_data_snapshot_id_is_deterministic_and_content_sensitive() -> None:
         "actual_end_date": "2024-01-08",
         "observation_count": 5,
         "instruments": ["SPY", "QQQ"],
+        "price_content_hash": "sha256:" + "0" * 64,
     }
     assert compute_data_snapshot_id(base) == compute_data_snapshot_id(dict(base))
     changed = dict(base, observation_count=6)
     assert compute_data_snapshot_id(base) != compute_data_snapshot_id(changed)
+    # Same source, dates, count and tickers, but a revised price.
+    revised = dict(base, price_content_hash="sha256:" + "1" * 64)
+    assert compute_data_snapshot_id(base) != compute_data_snapshot_id(revised)

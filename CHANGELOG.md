@@ -52,11 +52,49 @@ complete and their contracts are released as `experimental`.
 ### Changed
 
 - Frozen `v0.1.1` consumer files (`adjusted_prices.csv`, `simple_returns.csv`,
-  `log_returns.csv`, `data_quality_report.json`, `run_manifest.json`) are
-  unchanged. The new `run_manifest.json` sections (`portfolio_analytics`,
-  `tail_analytics`) and `data_quality_report.json` sections
-  (`portfolio.analytics`, `portfolio.tail`) are additive, and are
+  `log_returns.csv`, `data_quality_report.json`, `run_manifest.json`) keep
+  their columns, units, schema ids and versions. The new `run_manifest.json`
+  sections (`portfolio_analytics`, `tail_analytics`), the new
+  `data_source.price_content_hash` key, and the `data_quality_report.json`
+  sections (`portfolio.analytics`, `portfolio.tail`) are additive, and are
   `experimental` alongside the schemas they describe.
+- `data_snapshot_id` now also hashes `price_content_hash`, a SHA-256 of the
+  aligned adjusted prices. Before, it covered only provider, source, date
+  bounds, observation count and tickers, so a revised price under the same
+  dates and source (a Yahoo dividend re-adjustment, an edited CSV) kept the id
+  that realization rows join on.
+- A rerun into an existing output directory removes engine-owned artifacts it
+  no longer writes, and a run without a portfolio refuses a directory that
+  holds a portfolio run.
+
+### Fixed
+
+- An infinite adjusted close (`inf` parses as a number) was accepted as a valid
+  price, written to `adjusted_prices.csv`, and turned the next simple return
+  into exactly `-1`. It is now an invalid price, counted in
+  `invalid_price_values_removed`, and the alignment policy rejects the hole it
+  leaves.
+- Historical ES tail counts, the VaR rank and the small-tail warning are
+  computed in exact rational arithmetic. Float error made `full_tail_count`,
+  `boundary_weight` and `contributing_observation_count` wrong by a whole
+  observation at common inputs (n = 10 at 0.80, n = 100 at 0.99), and made the
+  VaR and ES warnings disagree at an exact tail count of 1 or 10.
+- A perfectly hedged book on a singular covariance was rejected as not
+  positive semidefinite about half the time; the variance tolerance now scales
+  with `|w|' |Sigma| |w|`.
+- `tail_analytics.window` in `run_manifest.json` recorded the trailing window
+  beside the full-sample headline count. It is now always
+  `full_aligned_sample`; the trailing window is recorded under
+  `tail_analytics.trailing.window`.
+- Identical tail-sample warnings were stored twice in
+  `data_quality_report.json`.
+- Stress shocks below `-1` are rejected.
+- A proxy snapshot on 2035-12-31, the calendar's last session, raised instead
+  of being recorded as `missing_target_return`.
+- The methodology said estimation windows never use observations after
+  `as_of_date`. The headline book measures replay the book over the whole
+  configured sample, as the P&L and tail pages and their tests already
+  required; the cross-cutting rule now says so.
 
 ### Removed
 

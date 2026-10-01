@@ -118,11 +118,38 @@ def test_var_rank_and_es_fields_match_exact_rational_arithmetic() -> None:
             assert es.contributing_observation_count == exact_k + (exact_delta > 0), (
                 case
             )
+            assert var.tail_sample_warning == es.tail_sample_warning, case
             # The ES boundary observation is the VaR observation.
             if exact_delta > 0:
                 assert es.tail_contributions[-1].order_statistic_rank == (
                     var.order_statistic_rank
                 ), case
+
+
+@pytest.mark.parametrize(
+    ("n", "alpha", "expected"),
+    [
+        # Exact tail count 1: indicative, not "dominated by one loss".
+        (5, 0.80, "holds about 1 expected"),
+        (10, 0.90, "holds about 1 expected"),
+        # Exact tail count 10: no warning at all.
+        (50, 0.80, None),
+        (100, 0.90, None),
+        (125, 0.92, None),
+    ],
+)
+def test_small_tail_warning_uses_the_exact_tail_count(
+    n: int, alpha: float, expected: str | None
+) -> None:
+    var = historical_var(range(n), alpha)
+    es = historical_es(range(n), alpha)
+    assert var.tail_sample_warning == es.tail_sample_warning
+    if expected is None:
+        assert var.tail_sample_warning is None
+    else:
+        assert var.tail_sample_warning is not None
+        assert expected in var.tail_sample_warning
+        assert "dominated" not in var.tail_sample_warning
 
 
 def test_constant_losses_give_equal_var_and_es() -> None:

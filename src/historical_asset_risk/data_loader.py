@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from historical_asset_risk.config import AnalysisConfig
@@ -21,6 +23,20 @@ from historical_asset_risk.providers import (
 )
 
 
+def price_content_hash(prices: pd.DataFrame) -> str:
+    """Return the ``sha256:`` identity of an aligned adjusted-price matrix.
+
+    The hash covers dates, instrument columns in order, and every price. It is
+    taken over a canonical CSV rendering (ISO dates, ``\\n`` line endings, and
+    round-trip float text), so it does not depend on the platform that wrote
+    ``adjusted_prices.csv``.
+    """
+    canonical = prices.to_csv(
+        index_label="date", date_format="%Y-%m-%d", lineterminator="\n"
+    )
+    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class MarketDataResult:
     """Validated prices and the lineage/quality evidence used to obtain them."""
@@ -29,6 +45,11 @@ class MarketDataResult:
     canonical_records: pd.DataFrame
     payload: ProviderPayload
     quality_report: dict[str, Any]
+
+    @property
+    def price_content_hash(self) -> str:
+        """Identity of the aligned prices every estimator in the run used."""
+        return price_content_hash(self.prices)
 
 
 def _canonical_from_wide(adjusted_prices: pd.DataFrame) -> pd.DataFrame:
@@ -73,9 +94,13 @@ def normalize_and_validate(
     scoped_missing_prices = int(source_prices.isna().sum())
     numeric_prices = pd.to_numeric(source_prices, errors="coerce")
     nonnumeric_prices = source_prices.notna() & numeric_prices.isna()
-    nonpositive_prices = numeric_prices.notna() & (numeric_prices <= 0)
-    invalid_prices = int((nonnumeric_prices | nonpositive_prices).sum())
-    data["adjusted_close"] = numeric_prices.mask(nonpositive_prices)
+    # ``to_numeric`` parses "inf"; an infinite price would otherwise survive as
+    # a valid observation and turn the next simple return into exactly -1.
+    unusable_prices = numeric_prices.notna() & (
+        (numeric_prices <= 0) | ~np.isfinite(numeric_prices)
+    )
+    invalid_prices = int((nonnumeric_prices | unusable_prices).sum())
+    data["adjusted_close"] = numeric_prices.mask(unusable_prices)
     data = data.sort_values(["date", "ticker"]).reset_index(drop=True)
 
     returned = sorted(
@@ -225,4 +250,5 @@ __all__ = [
     "normalize_and_validate",
     "persist_acquisition",
     "persist_quality_report",
+    "price_content_hash",
 ]

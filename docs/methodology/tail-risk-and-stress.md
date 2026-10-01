@@ -6,8 +6,10 @@ bounded-sample measurements: no coverage tests, no research splits, no
 next-session forecast records. One-day horizon in the initial release.
 
 The loss sample is `-portfolio_return` (return dimension) and
-`hypothetical_loss` (currency dimension) over the aligned interval set. Both
-dimensions are reported separately.
+`hypothetical_loss` (currency dimension) over every aligned interval in the
+configured sample, including intervals that end after `as_of_date`. Both
+dimensions are reported separately. `--tail-risk-window` does not shorten this
+sample; it applies only to the trailing series below.
 
 ## Historical Value at Risk
 
@@ -22,8 +24,10 @@ VaR_alpha(L) = L_(ceil(n * alpha))
   VaR stays negative and is never floored at zero.
 - The descriptive `quantile_method` is an asset-level statistic and
   does **not** redefine risk VaR.
-- Reports `observation_count`, the order-statistic rank, and a
-  small-tail warning when `n * (1 - alpha) < 1`.
+- Reports `observation_count`, the order-statistic rank, and a small-tail
+  warning when the expected tail count `m = n * (1 - alpha)` is below 10. Below
+  1, the warning says the estimate is dominated by the single most extreme
+  loss. VaR and ES carry the same warning because they read the same `m`.
 - **Artifact:** `portfolio_value_at_risk.csv` (frozen columns).
 
 ## Historical Expected Shortfall
@@ -36,10 +40,12 @@ ES_alpha(L) = (sum of the largest k losses + delta * L_(n - k)) / m
 ```
 
 - The sum is empty when `k = 0`.
-- `m`, `k`, `delta` and the VaR rank `ceil(n * alpha)` are computed in exact
-  rational arithmetic on `alpha` as written (`0.99` is `99/100`). In binary
-  floating point `100 * (1 - 0.99)` is `1.0000000000000009`, which would make
-  `floor` / `ceil` misreport the tail by a whole observation.
+- `m`, `k`, `delta`, the VaR rank `ceil(n * alpha)` and the small-tail warning
+  are computed in exact rational arithmetic on `alpha` as written (`0.99` is
+  `99/100`). In binary floating point `10 * (1 - 0.80)` is
+  `1.9999999999999996`, so `floor` would drop a full-weight observation, and
+  `100 * (1 - 0.99)` is `1.0000000000000009`, which would add a spurious
+  boundary observation with weight about `9e-16`.
 - The reported `tail_contributions` weights (`1 / m` on each of the `k` largest
   losses, `delta / m` on `L_(n - k)`) always sum to one and are written to
   `portfolio_expected_shortfall_tail_weights.csv` so ES is auditable.
@@ -90,11 +96,15 @@ A scenario has no probability. Scenarios are authored in a catalog JSON
 (`--stress-catalog-path`); each `(scenario_id, scenario_version)` pair is
 immutable and its `content_hash` is re-verified on load.
 
-- **Historical** scenarios derive their shocks from observed simple returns
-  over an explicit session range via `compound_simple_returns`:
-  `cumulative_shock[i] = product(1 + simple_return[i, d]) - 1`.
+- **Historical** scenarios are authored from observed simple returns over an
+  explicit session range with `historical_shock_vector`:
+  `cumulative_shock[i] = product(1 + simple_return[i, d]) - 1`. A run applies
+  the stored, hash-verified shocks and never re-derives them, so a published
+  scenario does not change when the price file does.
 - **Hypothetical** scenarios are explicit `instrument_id` simple-return shocks
   `q[i]`.
+- Every shock is finite and at least `-1`: a simple return cannot fall below
+  a total loss.
 
 Applied to the current as-of currency exposures:
 

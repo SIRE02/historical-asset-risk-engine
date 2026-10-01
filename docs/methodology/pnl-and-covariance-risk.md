@@ -45,7 +45,9 @@ proxy_realized_pnl[t + 1] = transpose(x_t) * simple_return[t + 1]
 where `t + 1` is the next valid session on the declared calendar. Snapshots
 whose target return is outside the sample, reached across a session gap, or
 missing a held instrument's return are reported with a non-`realized`
-`outcome_status` and a null P&L rather than dropped.
+`outcome_status` and a null P&L rather than dropped. A snapshot on the
+calendar's last supported session has no resolvable `t + 1`; it is reported as
+`missing_target_return` with an empty `target_period_end`.
 
 - Adjusted total returns omit intraday position changes, fees, taxes,
   financing, and separately reconciled corporate-action cash flows. This is an
@@ -104,7 +106,11 @@ percentage_component[i]     = component_volatility[i] / portfolio_volatility
 - **Negative component contributions are valid for hedges and are never
   clipped.**
 - A zero-volatility portfolio uses an explicit policy: marginal, component,
-  and percentage contributions are set to zero and never divide.
+  and percentage contributions are set to zero and never divide. Variance
+  within `1e-12 * |w|' |Sigma| |w|` of zero (floor `1e-18`) counts as zero:
+  rounding leaves a perfect hedge on a singular Sigma a few ulps either side
+  of zero, not exactly there. Only variance more negative than that tolerance
+  is rejected as not positive semidefinite.
 - Annualized volatility is a labeled square-root-of-time approximation.
 - Gross concentration summary: gross weight, Herfindahl, effective names. No
   optimizer.

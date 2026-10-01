@@ -23,6 +23,8 @@ def _validate_prices(prices: pd.DataFrame) -> None:
         raise ValueError("The price matrix is empty.")
     if (prices <= 0).any(axis=None):
         raise ValueError("All adjusted prices must be strictly positive.")
+    if np.isinf(prices.to_numpy(dtype=float)).any():
+        raise ValueError("All adjusted prices must be finite.")
 
 
 def calculate_simple_returns(prices: pd.DataFrame) -> pd.DataFrame:

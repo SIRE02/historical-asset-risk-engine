@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -10,6 +11,7 @@ import pytest
 
 from historical_asset_risk import cli
 from historical_asset_risk.config import AnalysisConfig
+from historical_asset_risk.data_loader import price_content_hash
 from historical_asset_risk.stress import (
     STRESS_CATALOG_SCHEMA_ID,
     STRESS_SCENARIO_SCHEMA_VERSION,
@@ -253,3 +255,73 @@ def test_returns_only_run_writes_no_tail_analytics_files(tmp_path: Path) -> None
     )
     manifest = json.loads((output_dir / "run_manifest.json").read_text())
     assert "tail_analytics" not in manifest
+
+
+def test_headline_window_is_the_full_sample_and_warnings_are_not_repeated(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "out"
+    config = replace(
+        _config(tmp_path, output_dir, portfolio=True, history=True),
+        tail_risk_window=3,
+    )
+    cli.run_analysis(config)
+
+    manifest = json.loads((output_dir / "run_manifest.json").read_text())
+    tail_analytics = manifest["tail_analytics"]
+    assert tail_analytics["window"] == "full_aligned_sample"
+    assert tail_analytics["trailing"]["window"] == 3
+    var = pd.read_csv(output_dir / "portfolio_value_at_risk.csv")
+    assert (var["observation_count"] == tail_analytics["observation_count"]).all()
+
+    # 7 intervals at 0.9 leave a tail of 0.7: VaR and ES warn identically, and
+    # each dimension's warning is stored once.
+    quality = json.loads((output_dir / "data_quality_report.json").read_text())
+    warnings = quality["portfolio"]["tail"]["tail_sample_warnings"]
+    assert len(warnings) == 2
+    assert {warning.split(":")[0] for warning in warnings} == {"return", "currency"}
+
+
+def test_rerun_removes_stale_engine_artifacts_and_keeps_other_files(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "out"
+    cli.run_analysis(_config(tmp_path, output_dir, portfolio=True, stress=True))
+    assert (output_dir / "stress_test_results.csv").is_file()
+    (output_dir / "notes.txt").write_text("kept", encoding="utf-8")
+
+    cli.run_analysis(_config(tmp_path, output_dir, portfolio=True, stress=False))
+
+    names = {p.name for p in output_dir.iterdir()}
+    assert (
+        not {
+            "stress_test_results.csv",
+            "stress_contributions.csv",
+            "stress_scenario_catalog.json",
+        }
+        & names
+    )
+    assert "notes.txt" in names
+    manifest = json.loads((output_dir / "run_manifest.json").read_text())
+    assert names - {"notes.txt"} == set(manifest["generated_artifacts"])
+
+
+def test_returns_only_run_refuses_a_portfolio_output_directory(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "out"
+    cli.run_analysis(_config(tmp_path, output_dir, portfolio=True))
+    with pytest.raises(ValueError, match="materially different portfolio run"):
+        cli.run_analysis(_config(tmp_path, output_dir, portfolio=False))
+    assert (output_dir / "portfolio_value_at_risk.csv").is_file()
+
+
+def test_manifest_price_hash_matches_the_written_prices(tmp_path: Path) -> None:
+    output_dir = tmp_path / "out"
+    cli.run_analysis(_config(tmp_path, output_dir, portfolio=True))
+
+    manifest = json.loads((output_dir / "run_manifest.json").read_text())
+    written = pd.read_csv(
+        output_dir / "adjusted_prices.csv", index_col="date", parse_dates=["date"]
+    )
+    assert manifest["data_source"]["price_content_hash"] == price_content_hash(written)

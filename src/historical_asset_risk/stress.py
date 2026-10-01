@@ -137,6 +137,11 @@ def _parse_shocks(raw: Any, scenario_id: str) -> tuple[InstrumentShock, ...]:
             raise StressScenarioError(
                 f"Scenario {scenario_id!r} shock for {instrument_id!r} is not finite."
             )
+        if shock_value < -1.0:
+            raise StressScenarioError(
+                f"Scenario {scenario_id!r} shock for {instrument_id!r} is "
+                f"{shock_value!r}; a simple return cannot fall below -1."
+            )
         shocks.append(InstrumentShock(instrument_id, shock_value))
     return tuple(shocks)
 

@@ -43,6 +43,17 @@ def test_return_calculations_are_vectorized_and_finite(prices: pd.DataFrame) -> 
     assert np.isfinite(log.to_numpy()).all()
 
 
+def test_infinite_price_is_rejected_not_turned_into_a_total_loss(
+    prices: pd.DataFrame,
+) -> None:
+    corrupt = prices.astype(float)
+    corrupt.iloc[3, 0] = np.inf
+    with pytest.raises(ValueError, match="finite"):
+        calculate_simple_returns(corrupt)
+    with pytest.raises(ValueError, match="finite"):
+        calculate_log_returns(corrupt)
+
+
 def test_return_distribution_statistics_match_hand_calculated_fixture() -> None:
     returns = pd.DataFrame({"AAA": [-0.01, 0.0, 0.01, 0.02, 0.03]})
 

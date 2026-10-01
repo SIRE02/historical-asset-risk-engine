@@ -143,8 +143,9 @@ def compute_tail_analytics(
         ne = normal_es(losses, alpha, units=units)
         es_ge_var_all = es_ge_var_all and he.es_ge_var
         for warning in (hv.tail_sample_warning, he.tail_sample_warning):
-            if warning and warning not in warnings:
-                warnings.append(f"{dimension}: {warning}")
+            labelled = f"{dimension}: {warning}"
+            if warning and labelled not in warnings:
+                warnings.append(labelled)
 
         var_rows.append(
             {
@@ -246,7 +247,9 @@ def compute_tail_analytics(
 
     manifest_section = {
         "confidence_level": alpha,
-        "window": window if window is not None else "full_aligned_sample",
+        # The headline estimators always use every aligned interval; the
+        # configured window applies only to the trailing series.
+        "window": "full_aligned_sample",
         "quantile_method": CANONICAL_QUANTILE_METHOD,
         "es_algorithm": "exact_finite_sample_equal_mass_with_fractional_boundary",
         "dimensions": [name for name, _ in _DIMENSIONS],
@@ -369,6 +372,7 @@ def _trailing_tail_risk(
         "record_count": len(rows),
         "manifest": {
             "status": "computed",
+            "window": window if window is not None else "trailing_to_date",
             "keyed_by": ["as_of_date", "exposure_snapshot_id", "window", "confidence"],
             "record_count": len(rows),
             "not_a_forecast_store": True,

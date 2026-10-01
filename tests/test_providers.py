@@ -12,6 +12,7 @@ from historical_asset_risk.data_loader import (
     load_market_data,
     normalize_and_validate,
     persist_acquisition,
+    price_content_hash,
 )
 from historical_asset_risk.providers import (
     CSVProvider,
@@ -145,6 +146,40 @@ def test_quality_report_counts_duplicates_invalid_prices_and_alignment() -> None
     assert quality["invalid_price_values_removed"] == 1
     assert quality["common_history_rows_removed"] == 1
     assert len(prices) == 4
+
+
+def test_infinite_prices_are_invalid_not_valid_observations() -> None:
+    records = _canonical(_prices()).astype({"adjusted_close": object})
+    last_aaa = (records["ticker"] == "AAA") & (records["date"] == "2024-01-08")
+    records.loc[last_aaa, "adjusted_close"] = "inf"
+    config = AnalysisConfig(
+        tickers=("AAA", "BBB"),
+        start_date="2024-01-01",
+        end_date="2024-02-01",
+        rolling_window=2,
+    )
+    prices, _normalized, quality = normalize_and_validate(records, config)
+
+    assert quality["invalid_price_values_removed"] == 1
+    assert len(prices) == 4
+    assert prices.index.max() == pd.Timestamp("2024-01-05")
+
+    interior = _canonical(_prices())
+    middle_aaa = (interior["ticker"] == "AAA") & (interior["date"] == "2024-01-04")
+    interior.loc[middle_aaa, "adjusted_close"] = float("inf")
+    with pytest.raises(MarketDataError, match="gap-spanning"):
+        normalize_and_validate(interior, config)
+
+
+def test_price_content_hash_tracks_every_price_and_nothing_else() -> None:
+    prices = _prices()
+    revised = prices.copy()
+    revised.iloc[2, 0] = 102.5
+
+    assert price_content_hash(prices) == price_content_hash(prices.copy())
+    assert price_content_hash(prices).startswith("sha256:")
+    assert price_content_hash(prices) != price_content_hash(revised)
+    assert price_content_hash(prices) != price_content_hash(prices[["BBB", "AAA"]])
 
 
 def test_quality_missing_count_is_scoped_to_requested_in_range_rows() -> None:

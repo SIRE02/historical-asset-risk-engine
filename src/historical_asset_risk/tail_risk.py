@@ -44,13 +44,22 @@ class TailRiskError(ValueError):
 def _exact_confidence_level(alpha: float) -> Fraction:
     """Return ``alpha`` as the exact decimal it was written as.
 
-    ``n * alpha`` and ``n * (1 - alpha)`` feed ``ceil`` / ``floor``. In binary
-    floating point ``100 * (1 - 0.99)`` is ``1.0000000000000009``, which turns a
-    few ulps of error into a whole-rank error in the VaR rank, ``k`` and
-    ``delta``. The shortest repr round-trips the float, so this is the decimal
-    the caller meant.
+    The shortest repr round-trips the float, so this is the decimal the caller
+    meant: ``0.99`` is ``99/100``.
     """
     return Fraction(repr(alpha))
+
+
+def _exact_tail_mass(n: int, alpha: float) -> Fraction:
+    """Return ``m = n * (1 - alpha)`` exactly.
+
+    ``m`` feeds ``floor`` and the integer thresholds of the small-tail warning.
+    In binary floating point ``10 * (1 - 0.80)`` is ``1.9999999999999996``, so
+    ``floor`` drops a full-weight observation and the warning crosses its
+    ``m < 1`` / ``m < 10`` boundary early; ``100 * (1 - 0.99)`` is
+    ``1.0000000000000009``, which adds a spurious boundary observation.
+    """
+    return n * (1 - _exact_confidence_level(alpha))
 
 
 def _validate_confidence_level(confidence_level: float) -> float:
@@ -125,7 +134,9 @@ def historical_var(
         order_statistic_rank=rank,
         quantile_method=CANONICAL_QUANTILE_METHOD,
         units=str(units),
-        tail_sample_warning=_tail_sample_warning(n * (1.0 - alpha), alpha),
+        tail_sample_warning=_tail_sample_warning(
+            float(_exact_tail_mass(n, alpha)), alpha
+        ),
     )
 
 
@@ -174,7 +185,7 @@ def historical_es(
     alpha = _validate_confidence_level(confidence_level)
     ordered = _ascending_losses(losses)
     n = int(ordered.size)
-    exact_m = n * (1 - _exact_confidence_level(alpha))
+    exact_m = _exact_tail_mass(n, alpha)
     k = math.floor(exact_m)
     m = float(exact_m)
     delta = float(exact_m - k)

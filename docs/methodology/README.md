@@ -26,8 +26,12 @@ diagnostics. Those belong to consuming research projects.
   loss).
 - **Time.** `as_of_date` is a session on the portfolio's declared calendar. A
   one-day proxy or trailing step uses the next / prior valid session on that
-  calendar, never civil `date ± 1`. Estimation windows never use observations
-  after `as_of_date`.
+  calendar, never civil `date ± 1`. The headline book measures (hypothetical
+  P&L, covariance risk, VaR / ES) replay the as-of book over every aligned
+  interval in the configured sample, which may end after `as_of_date`; they
+  describe the book under that sample, not risk known on `as_of_date`. The
+  trailing VaR / ES series uses only intervals ending no later than each
+  snapshot's `as_of_date`.
 - **No silent repair.** Missing, stale, or invalid data fails against an
   explicit policy. Nothing is forward-filled, proxied, or substituted quietly.
 - **Schema versions.** Every schema introduced after the `v0.1.1` handoff

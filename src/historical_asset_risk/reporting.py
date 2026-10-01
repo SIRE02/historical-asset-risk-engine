@@ -126,6 +126,7 @@ def build_run_manifest(
             "actual_end_date": quality["last_common_date"],
             "observation_count": quality["common_date_count_after_alignment"],
             "instruments": list(market_data.prices.columns),
+            "price_content_hash": market_data.price_content_hash,
             "canonical_record_stage": (
                 "normalized_requested_in_range_pre_complete_case_alignment"
             ),

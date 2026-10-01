@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from historical_asset_risk.artifacts import (
+    ARTIFACT_SCHEMAS,
     portfolio_artifact_frames,
     read_cash,
     read_instrument_registry,
@@ -227,8 +228,6 @@ def _load_exposure_history(
 def _prevent_snapshot_overwrite(
     output_dir: Path, portfolio: PortfolioValuation | None
 ) -> None:
-    if portfolio is None:
-        return
     manifest_path = output_dir / "run_manifest.json"
     if not manifest_path.is_file():
         return
@@ -239,11 +238,28 @@ def _prevent_snapshot_overwrite(
             f"Cannot verify the existing portfolio run manifest {manifest_path}: {exc}"
         ) from exc
     existing_id = existing.get("portfolio", {}).get("exposure_snapshot_id")
-    if existing_id is not None and existing_id != portfolio.exposure_snapshot_id:
+    new_id = portfolio.exposure_snapshot_id if portfolio is not None else None
+    # A run without a book counts as different: it would remove the earlier
+    # run's portfolio artifacts as stale.
+    if existing_id is not None and existing_id != new_id:
         raise ValueError(
             "Refusing to overwrite a materially different portfolio run in "
             f"{output_dir}; choose a new OUTPUT_DIR."
         )
+
+
+def _remove_stale_artifacts(output_dir: Path, artifacts: Sequence[str]) -> None:
+    """Delete engine-owned files an earlier run left that this run does not write.
+
+    Only names in the artifact schema registry are touched, so anything else a
+    person keeps in the directory is left alone. Without this, a rerun that
+    drops an optional layer (stress, proxy history) leaves the previous run's
+    files beside a manifest that no longer lists them.
+    """
+    for name in sorted(set(ARTIFACT_SCHEMAS) - set(artifacts)):
+        stale = output_dir / name
+        if stale.is_file():
+            stale.unlink()
 
 
 def run_analysis(
@@ -304,6 +320,7 @@ def run_analysis(
                 "common_date_count_after_alignment"
             ],
             "instruments": list(prices.columns),
+            "price_content_hash": market_data.price_content_hash,
         }
         portfolio_analytics_result = compute_portfolio_analytics(
             portfolio,
@@ -366,6 +383,9 @@ def run_analysis(
         artifacts.extend(sorted(tail_analytics_result.frames))
         if tail_analytics_result.catalog_json is not None:
             artifacts.append("stress_scenario_catalog.json")
+    if market_data.payload.provider == "yahoo":
+        artifacts.append("acquired_adjusted_prices.csv")
+    _remove_stale_artifacts(output_dir, artifacts)
     prices.to_csv(output_dir / "adjusted_prices.csv", index_label="date")
     simple_returns.to_csv(output_dir / "simple_returns.csv", index_label="date")
     log_returns.to_csv(output_dir / "log_returns.csv", index_label="date")
@@ -419,7 +439,6 @@ def run_analysis(
             quality_report["portfolio"]["tail"] = tail_analytics_result.quality_section
     persist_quality_report(quality_report, output_dir / "data_quality_report.json")
     if market_data.payload.provider == "yahoo":
-        artifacts.append("acquired_adjusted_prices.csv")
         persist_acquisition(
             market_data.canonical_records,
             output_dir / "acquired_adjusted_prices.csv",

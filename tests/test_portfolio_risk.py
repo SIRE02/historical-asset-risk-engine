@@ -109,6 +109,38 @@ def test_zero_volatility_uses_policy_without_dividing() -> None:
     assert (result.contributions["component_volatility"] == 0.0).all()
 
 
+def test_hedge_on_singular_covariance_is_zero_volatility_not_an_error() -> None:
+    # C = A + B, so long A + long B + short C has zero true variance. Rounding
+    # leaves the computed variance a few ulps either side of zero.
+    rng = np.random.default_rng(0)
+    for _ in range(200):
+        a = rng.normal(0.0, 0.01, 250)
+        b = rng.normal(0.0, 0.012, 250)
+        covariance = sample_simple_return_covariance(
+            pd.DataFrame({"US_A": a, "US_B": b, "US_C": a + b})
+        )
+        size = float(rng.uniform(1e5, 1e7))
+        exposures = {"US_A": size, "US_B": size, "US_C": -size}
+        weights = {key: value / 1e6 for key, value in exposures.items()}
+        result = portfolio_risk_from_covariance(
+            weights, exposures, covariance, observations_per_year=252
+        )
+        assert result.zero_volatility is True
+        assert result.return_volatility == 0.0
+        assert result.currency_volatility == 0.0
+        assert (result.contributions["component_volatility"] == 0.0).all()
+
+
+def test_materially_negative_variance_is_still_rejected() -> None:
+    with pytest.raises(PortfolioCovarianceError, match="not positive semidefinite"):
+        portfolio_risk_from_covariance(
+            {"US_A": 1.0, "US_B": -1.0},
+            {"US_A": 1.0, "US_B": -1.0},
+            _cov(1.0, 2.0, 1.0),
+            observations_per_year=252,
+        )
+
+
 def test_singular_covariance_is_flagged() -> None:
     result = portfolio_risk_from_covariance(
         {"US_A": 0.5, "US_B": 0.5},
