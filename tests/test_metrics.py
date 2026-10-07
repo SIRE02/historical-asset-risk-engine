@@ -54,6 +54,21 @@ def test_infinite_price_is_rejected_not_turned_into_a_total_loss(
         calculate_log_returns(corrupt)
 
 
+def test_unordered_or_repeated_dates_are_rejected_not_inverted() -> None:
+    dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"])
+    ascending = pd.DataFrame({"AAA": [100.0, 110.0, 121.0]}, index=dates)
+    np.testing.assert_allclose(calculate_simple_returns(ascending)["AAA"], 0.1)
+
+    # Newest-first input would otherwise give two -9.09% returns.
+    newest_first = ascending.iloc[::-1]
+    repeated = pd.DataFrame({"AAA": [100.0, 110.0, 121.0]}, index=dates[[0, 1, 1]])
+    for invalid in (newest_first, repeated):
+        with pytest.raises(ValueError, match="unique and ascending"):
+            calculate_simple_returns(invalid)
+        with pytest.raises(ValueError, match="unique and ascending"):
+            calculate_log_returns(invalid)
+
+
 def test_return_distribution_statistics_match_hand_calculated_fixture() -> None:
     returns = pd.DataFrame({"AAA": [-0.01, 0.0, 0.01, 0.02, 0.03]})
 

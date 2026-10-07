@@ -87,6 +87,21 @@ def normalize_and_validate(
     data = data.loc[
         data["date"].notna() & (data["date"] >= start) & (data["date"] < end)
     ]
+    # Prices are one end-of-day observation per session, keyed by session date.
+    # A time of day means intraday data: two rows on one session would survive
+    # deduplication as distinct dates and become sub-daily "daily" returns.
+    intraday = data.loc[data["date"] != data["date"].dt.normalize()]
+    if not intraday.empty:
+        examples = ", ".join(
+            f"{ticker} {timestamp.isoformat()}"
+            for ticker, timestamp in intraday.loc[:, ["ticker", "date"]]
+            .head(3)
+            .itertuples(index=False)
+        )
+        raise MarketDataError(
+            "Adjusted prices must be end-of-day observations dated by session, "
+            f"but {len(intraday)} row(s) carry a time of day: {examples}."
+        )
     source_prices = data["adjusted_close"]
     numeric_prices = pd.to_numeric(source_prices, errors="coerce")
     nonnumeric_prices = source_prices.notna() & numeric_prices.isna()

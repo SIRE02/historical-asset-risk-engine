@@ -141,6 +141,48 @@ def test_materially_negative_variance_is_still_rejected() -> None:
         )
 
 
+def test_matrix_negative_only_off_the_book_direction_is_rejected() -> None:
+    # Eigenvalues 3 and -1: the long-long book's variance (6) is positive, so a
+    # check on that book alone would accept a matrix that is not a covariance.
+    with pytest.raises(PortfolioCovarianceError, match="not positive semidefinite"):
+        portfolio_risk_from_covariance(
+            {"US_A": 1.0, "US_B": 1.0},
+            {"US_A": 1.0, "US_B": 1.0},
+            _cov(1.0, 2.0, 1.0),
+            observations_per_year=252,
+        )
+
+
+def test_nonsymmetric_covariance_is_rejected() -> None:
+    # Total variance would still reconcile, but Sigma w would not be the
+    # volatility gradient, so the marginal contributions would be wrong.
+    nonsymmetric = pd.DataFrame(
+        [[0.04, 0.03], [-0.01, 0.09]],
+        index=["US_A", "US_B"],
+        columns=["US_A", "US_B"],
+    )
+    with pytest.raises(PortfolioCovarianceError, match="not symmetric"):
+        portfolio_risk_from_covariance(
+            {"US_A": 0.5, "US_B": 0.5},
+            {"US_A": 50.0, "US_B": 50.0},
+            nonsymmetric,
+            observations_per_year=252,
+        )
+
+
+@pytest.mark.parametrize("observations_per_year", [0, -252, 252.0, True])
+def test_annualization_factor_must_be_a_positive_integer(
+    observations_per_year: object,
+) -> None:
+    with pytest.raises(ValueError, match="positive integer"):
+        portfolio_risk_from_covariance(
+            {"US_A": 0.5, "US_B": 0.5},
+            {"US_A": 50.0, "US_B": 50.0},
+            _cov(0.04, 0.01, 0.09),
+            observations_per_year=observations_per_year,
+        )
+
+
 def test_singular_covariance_is_flagged() -> None:
     result = portfolio_risk_from_covariance(
         {"US_A": 0.5, "US_B": 0.5},
@@ -167,6 +209,18 @@ def test_reordering_instruments_leaves_risk_unchanged() -> None:
     )
     assert backward.return_variance == pytest.approx(forward.return_variance)
     assert backward.currency_variance == pytest.approx(forward.currency_variance)
+
+
+def test_duplicate_covariance_labels_are_rejected_not_double_counted() -> None:
+    # One supplied weight would fill both "US_A" slots: 40% volatility and a
+    # gross weight of 2 for a 20%-volatility, fully invested book.
+    duplicated = pd.DataFrame(
+        [[0.04, 0.04], [0.04, 0.04]], index=["US_A", "US_A"], columns=["US_A", "US_A"]
+    )
+    with pytest.raises(PortfolioReturnAlignmentError, match="duplicate instrument"):
+        portfolio_risk_from_covariance(
+            {"US_A": 1.0}, {"US_A": 100.0}, duplicated, observations_per_year=252
+        )
 
 
 def test_risk_alignment_failures_are_specific() -> None:

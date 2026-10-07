@@ -21,6 +21,10 @@ from historical_asset_risk.estimation import (
 def _validate_prices(prices: pd.DataFrame) -> None:
     if prices.empty:
         raise ValueError("The price matrix is empty.")
+    # Each return divides a row by the row before it, so newest-first input
+    # would silently produce inverted returns rather than fail.
+    if prices.index.has_duplicates or not prices.index.is_monotonic_increasing:
+        raise ValueError("Price observation dates must be unique and ascending.")
     if (prices <= 0).any(axis=None):
         raise ValueError("All adjusted prices must be strictly positive.")
     if np.isinf(prices.to_numpy(dtype=float)).any():

@@ -4,6 +4,38 @@ All notable changes to `historical-asset-risk-engine`. The project uses
 semantic versioning; while the version is `0.x`, minor bumps may add contracts
 but do not change the meaning of a frozen consumer artifact.
 
+## Unreleased
+
+### Fixed
+
+- Price rows carrying a time of day are rejected. Intraday observations
+  previously survived date/ticker deduplication as separate dates and became
+  sub-daily "daily" returns; the calendar check merged them and did not run
+  for returns-only configurations.
+- A run writes into a staging folder and publishes only once every file is
+  complete. A failure part-way previously left new CSVs beside the previous
+  run's manifest; the previous run is now left untouched, and an interrupted
+  publish leaves no manifest for `load_artifact` to validate against.
+- `load_artifact` refuses an as-of-book portfolio artifact whose
+  `portfolio_snapshot_id`, `exposure_snapshot_id`, or `portfolio_id` differs
+  from the manifest's book. A blank identity or row `schema_version` is a
+  mismatch; it previously passed because the comparison skipped missing values.
+- `load_artifact` refuses `adjusted_prices.csv` when it no longer matches the
+  manifest's `data_source.price_content_hash`. Manifests without the hash
+  (`v0.1.1`) load as before.
+- `load_artifact` parses floats with round-trip precision, so every loaded
+  value equals the value written. The default parser returned roughly one in
+  ten provider-supplied prices one ulp away from the file.
+- `portfolio_risk_from_covariance` and `hypothetical_pnl` reject duplicate
+  instrument labels instead of applying one exposure to each copy.
+- `portfolio_risk_from_covariance` requires a symmetric, positive-semidefinite
+  covariance matrix and a positive integer `observations_per_year`. A
+  nonsymmetric matrix previously gave marginal contributions that were not
+  volatility derivatives, a matrix negative only off the book's direction
+  passed, and `observations_per_year=0` reported zero annualized volatility.
+- `calculate_simple_returns` and `calculate_log_returns` reject unordered or
+  repeated dates instead of returning inverted returns.
+
 ## 0.2.0
 
 Public package freeze. The portfolio-analytics and tail-analytics layers are

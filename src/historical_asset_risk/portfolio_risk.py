@@ -29,7 +29,7 @@ from historical_asset_risk.contracts import (
     PortfolioCovarianceError,
     PortfolioReturnAlignmentError,
 )
-from historical_asset_risk.estimation import SAMPLE_DDOF
+from historical_asset_risk.estimation import SAMPLE_DDOF, validate_positive_integer
 
 # Portfolio variance within this magnitude of zero is treated as zero for the
 # division-by-volatility policy and for the non-negativity invariant. It is the
@@ -217,6 +217,32 @@ def _aligned_vector(
     return vector
 
 
+def _require_covariance_matrix(sigma: np.ndarray) -> None:
+    """Fail unless ``sigma`` is symmetric and positive semidefinite.
+
+    ``Sigma w`` is a volatility derivative only for a symmetric matrix, and the
+    book-variance check below sees only the supplied book's direction, so a
+    matrix negative in another direction would otherwise pass. Both tests use
+    the variance checks' relative tolerance (scaled by dimension for the
+    eigenvalue), so a singular sample covariance, whose smallest eigenvalue
+    lands a few ulps below zero, is still accepted.
+    """
+    if sigma.size == 0:
+        return
+    tolerance = max(
+        VARIANCE_ZERO_TOLERANCE,
+        VARIANCE_RELATIVE_TOLERANCE * float(np.abs(sigma).max()),
+    )
+    if float(np.abs(sigma - sigma.T).max()) > tolerance:
+        raise PortfolioCovarianceError("The covariance matrix is not symmetric.")
+    minimum = float(np.linalg.eigvalsh(sigma).min())
+    if minimum < -tolerance * sigma.shape[0]:
+        raise PortfolioCovarianceError(
+            "The covariance matrix is not positive semidefinite (minimum "
+            f"eigenvalue {minimum:.3e})."
+        )
+
+
 def _variance_tolerance(vector: np.ndarray, sigma: np.ndarray) -> float:
     scale = float(np.abs(vector) @ np.abs(sigma) @ np.abs(vector))
     return max(VARIANCE_ZERO_TOLERANCE, VARIANCE_RELATIVE_TOLERANCE * scale)
@@ -236,6 +262,12 @@ def portfolio_risk_from_covariance(
     are signed base-currency exposures ``x_i``.
     """
     instrument_ids = [str(column) for column in covariance.columns]
+    # A repeated label would place one supplied weight in several vector slots
+    # and count that instrument's risk more than once.
+    if len(set(instrument_ids)) != len(instrument_ids):
+        raise PortfolioReturnAlignmentError(
+            "The covariance matrix has duplicate instrument labels."
+        )
     if list(covariance.index.astype(str)) != instrument_ids:
         raise PortfolioReturnAlignmentError(
             "The covariance matrix must be square and identically ordered on both axes."
@@ -243,6 +275,8 @@ def portfolio_risk_from_covariance(
     sigma = covariance.to_numpy(dtype=float)
     if not np.isfinite(sigma).all():
         raise PortfolioCovarianceError("The covariance matrix has non-finite entries.")
+    _require_covariance_matrix(sigma)
+    validate_positive_integer(observations_per_year, "OBSERVATIONS_PER_YEAR")
 
     weight_vector = _aligned_vector(weights, instrument_ids, "weights")
     exposure_vector = _aligned_vector(

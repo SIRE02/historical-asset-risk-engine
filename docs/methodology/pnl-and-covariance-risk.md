@@ -118,6 +118,13 @@ percentage_component[i]     = component_volatility[i] / portfolio_volatility
   rounding leaves a perfect hedge on a singular Sigma a few ulps either side
   of zero, not exactly there. Only variance more negative than that tolerance
   is rejected as not positive semidefinite.
+- Sigma must be symmetric and positive semidefinite as a matrix, not only in
+  the book's direction: `Sigma * w` is the volatility gradient only for a
+  symmetric Sigma. Asymmetry beyond `1e-12 * max|Sigma|` (floor `1e-18`), or a
+  smallest eigenvalue below minus that tolerance times the dimension, is
+  rejected. A singular sample covariance stays within it.
+- `observations_per_year` must be a positive integer, as for the descriptive
+  volatility estimators.
 - Annualized volatility is a labeled square-root-of-time approximation.
 - Gross concentration summary: gross weight, Herfindahl, effective names. No
   optimizer.
