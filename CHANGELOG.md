@@ -4,7 +4,10 @@ All notable changes to `historical-asset-risk-engine`. The project uses
 semantic versioning; while the version is `0.x`, minor bumps may add contracts
 but do not change the meaning of a frozen consumer artifact.
 
-## Unreleased
+## 0.2.1
+
+Correctness fixes. No frozen consumer file changes columns, units, schema id,
+or version. Some inputs that 0.2.0 accepted and mis-measured are now refused.
 
 ### Fixed
 
