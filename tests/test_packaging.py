@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-EXPECTED_VERSION = "0.2.0"
+EXPECTED_VERSION = "0.2.1"
 
 
 def test_wheel_builds_and_imports_outside_the_source_tree(tmp_path: Path) -> None:

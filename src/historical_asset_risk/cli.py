@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import tempfile
 from collections import defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -263,6 +264,22 @@ def _remove_stale_artifacts(output_dir: Path, artifacts: Sequence[str]) -> None:
             stale.unlink()
 
 
+def _publish_run(staging_dir: Path, output_dir: Path, artifacts: Sequence[str]) -> None:
+    """Move a completed run from ``staging_dir`` into ``output_dir``, manifest last.
+
+    The old manifest goes first: if a move fails part-way, the directory has no
+    manifest, so ``load_artifact`` refuses its files instead of validating new
+    files against the previous run's declarations.
+    """
+    manifest_name = "run_manifest.json"
+    (output_dir / manifest_name).unlink(missing_ok=True)
+    _remove_stale_artifacts(output_dir, artifacts)
+    for name in artifacts:
+        if name != manifest_name:
+            (staging_dir / name).replace(output_dir / name)
+    (staging_dir / manifest_name).replace(output_dir / manifest_name)
+
+
 def run_analysis(
     config: AnalysisConfig | None = None,
     provider: MarketDataProvider | None = None,
@@ -390,70 +407,81 @@ def run_analysis(
             artifacts.append("stress_scenario_catalog.json")
     if market_data.payload.provider == "yahoo":
         artifacts.append("acquired_adjusted_prices.csv")
-    _remove_stale_artifacts(output_dir, artifacts)
-    prices.to_csv(output_dir / "adjusted_prices.csv", index_label="date")
-    simple_returns.to_csv(output_dir / "simple_returns.csv", index_label="date")
-    log_returns.to_csv(output_dir / "log_returns.csv", index_label="date")
-    return_summary.to_csv(output_dir / "return_summary.csv")
-    vol_summary.to_csv(output_dir / "volatility_summary.csv")
-    rolling.to_csv(output_dir / "rolling_volatility.csv", index_label="date")
-    covariances.to_csv(output_dir / "covariance_matrix.csv")
-    correlations.to_csv(output_dir / "correlation_matrix.csv")
-    rolling_covariances.to_csv(
-        output_dir / "rolling_covariance.csv", index_label=["date", "ticker"]
-    )
-    rolling_correlations.to_csv(
-        output_dir / "rolling_correlation.csv", index_label=["date", "ticker"]
-    )
-    plot_rolling_volatility(
-        rolling, output_dir / "rolling_volatility.png", config.rolling_window
-    )
-    plot_correlation_heatmap(correlations, output_dir / "correlation_heatmap.png")
-    quality_report = dict(market_data.quality_report)
-    if portfolio is not None:
-        for name, frame in portfolio_artifact_frames(portfolio).items():
-            frame.to_csv(output_dir / name, index=False)
-        reconciliation = portfolio.snapshot.reconciliation
-        quality_report["portfolio"] = {
-            "portfolio_snapshot_id": portfolio.snapshot.cash.portfolio_snapshot_id,
-            "exposure_snapshot_id": portfolio.exposure_snapshot_id,
-            "position_count": len(portfolio.positions),
-            "held_instrument_count": len(reconciliation.held_instrument_ids),
-            "missing_market_data_instruments": list(
-                reconciliation.missing_market_data_instruments
-            ),
-            "extra_market_data_instruments_ignored": list(
-                reconciliation.extra_market_data_instruments
-            ),
-            "validation_exceptions": [],
-        }
+    # Every file is written to a staging folder first and published only once
+    # the whole run has succeeded, so a failure part-way leaves the previous
+    # run's files and manifest untouched rather than mixed with this run's.
+    with tempfile.TemporaryDirectory(
+        prefix=".staging-", dir=output_dir, ignore_cleanup_errors=True
+    ) as staging:
+        staging_dir = Path(staging)
+        prices.to_csv(staging_dir / "adjusted_prices.csv", index_label="date")
+        simple_returns.to_csv(staging_dir / "simple_returns.csv", index_label="date")
+        log_returns.to_csv(staging_dir / "log_returns.csv", index_label="date")
+        return_summary.to_csv(staging_dir / "return_summary.csv")
+        vol_summary.to_csv(staging_dir / "volatility_summary.csv")
+        rolling.to_csv(staging_dir / "rolling_volatility.csv", index_label="date")
+        covariances.to_csv(staging_dir / "covariance_matrix.csv")
+        correlations.to_csv(staging_dir / "correlation_matrix.csv")
+        rolling_covariances.to_csv(
+            staging_dir / "rolling_covariance.csv", index_label=["date", "ticker"]
+        )
+        rolling_correlations.to_csv(
+            staging_dir / "rolling_correlation.csv", index_label=["date", "ticker"]
+        )
+        plot_rolling_volatility(
+            rolling, staging_dir / "rolling_volatility.png", config.rolling_window
+        )
+        plot_correlation_heatmap(correlations, staging_dir / "correlation_heatmap.png")
+        quality_report = dict(market_data.quality_report)
+        if portfolio is not None:
+            for name, frame in portfolio_artifact_frames(portfolio).items():
+                frame.to_csv(staging_dir / name, index=False)
+            reconciliation = portfolio.snapshot.reconciliation
+            quality_report["portfolio"] = {
+                "portfolio_snapshot_id": portfolio.snapshot.cash.portfolio_snapshot_id,
+                "exposure_snapshot_id": portfolio.exposure_snapshot_id,
+                "position_count": len(portfolio.positions),
+                "held_instrument_count": len(reconciliation.held_instrument_ids),
+                "missing_market_data_instruments": list(
+                    reconciliation.missing_market_data_instruments
+                ),
+                "extra_market_data_instruments_ignored": list(
+                    reconciliation.extra_market_data_instruments
+                ),
+                "validation_exceptions": [],
+            }
+            if portfolio_analytics_result is not None:
+                for name, frame in portfolio_analytics_result.frames.items():
+                    frame.to_csv(staging_dir / name, index=False)
+                quality_report["portfolio"]["analytics"] = (
+                    portfolio_analytics_result.quality_section
+                )
+            if tail_analytics_result is not None:
+                for name, frame in tail_analytics_result.frames.items():
+                    frame.to_csv(staging_dir / name, index=False)
+                if tail_analytics_result.catalog_json is not None:
+                    (staging_dir / "stress_scenario_catalog.json").write_text(
+                        json.dumps(tail_analytics_result.catalog_json, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                quality_report["portfolio"]["tail"] = (
+                    tail_analytics_result.quality_section
+                )
+        persist_quality_report(quality_report, staging_dir / "data_quality_report.json")
+        if market_data.payload.provider == "yahoo":
+            persist_acquisition(
+                market_data.canonical_records,
+                staging_dir / "acquired_adjusted_prices.csv",
+            )
+        manifest = build_run_manifest(config, market_data, artifacts, portfolio)
         if portfolio_analytics_result is not None:
-            for name, frame in portfolio_analytics_result.frames.items():
-                frame.to_csv(output_dir / name, index=False)
-            quality_report["portfolio"]["analytics"] = (
-                portfolio_analytics_result.quality_section
+            manifest["portfolio_analytics"] = (
+                portfolio_analytics_result.manifest_section
             )
         if tail_analytics_result is not None:
-            for name, frame in tail_analytics_result.frames.items():
-                frame.to_csv(output_dir / name, index=False)
-            if tail_analytics_result.catalog_json is not None:
-                (output_dir / "stress_scenario_catalog.json").write_text(
-                    json.dumps(tail_analytics_result.catalog_json, indent=2) + "\n",
-                    encoding="utf-8",
-                )
-            quality_report["portfolio"]["tail"] = tail_analytics_result.quality_section
-    persist_quality_report(quality_report, output_dir / "data_quality_report.json")
-    if market_data.payload.provider == "yahoo":
-        persist_acquisition(
-            market_data.canonical_records,
-            output_dir / "acquired_adjusted_prices.csv",
-        )
-    manifest = build_run_manifest(config, market_data, artifacts, portfolio)
-    if portfolio_analytics_result is not None:
-        manifest["portfolio_analytics"] = portfolio_analytics_result.manifest_section
-    if tail_analytics_result is not None:
-        manifest["tail_analytics"] = tail_analytics_result.manifest_section
-    persist_run_manifest(manifest, output_dir / "run_manifest.json")
+            manifest["tail_analytics"] = tail_analytics_result.manifest_section
+        persist_run_manifest(manifest, staging_dir / "run_manifest.json")
+        _publish_run(staging_dir, output_dir, artifacts)
 
     print("\nDaily and annualized volatility:")
     print(vol_summary.to_string(float_format=lambda value: f"{value:.4f}"))

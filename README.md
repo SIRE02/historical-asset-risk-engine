@@ -183,7 +183,7 @@ The CSV must be in long form. Additional columns are ignored.
 
 | Column | Requirement |
 | --- | --- |
-| `date` | Parseable date satisfying `start_date <= date < end_date` |
+| `date` | Parseable session date satisfying `start_date <= date < end_date`; no time of day |
 | `ticker` | Symbol; trimmed and normalized to uppercase |
 | `adjusted_close` | Finite numeric adjusted close greater than zero |
 
@@ -193,6 +193,9 @@ provider-specific split or distribution adjustments.
 ### Validation and alignment
 
 - Yahoo and CSV records use the same normalization and validation.
+- Prices are end-of-day observations keyed by session date. A row carrying a
+  time of day (other than midnight) fails the run rather than being truncated
+  to its date, so intraday data cannot pass as daily returns.
 - Missing, nonnumeric, zero, and negative prices are never filled.
 - Duplicate date/ticker rows keep the last valid source row and are disclosed.
   A missing or invalid duplicate never replaces a valid price.
@@ -392,6 +395,12 @@ Unknown columns are rejected. Additional rules:
   directory, including with a run that has no portfolio. A rerun removes
   engine-owned artifacts it no longer writes (for example stress files when
   the catalog is dropped); other files in the directory are left alone.
+- A run writes every file to a staging folder inside the output directory and
+  publishes only once the whole run has succeeded, so a failed run leaves the
+  previous one intact. Publishing moves files one at a time, with the manifest
+  last; it is not a transaction, and nothing locks the directory against a
+  second run. Give each run its own output directory, especially when runs
+  overlap or another program reads the results.
 
 ## Python API
 

@@ -10,7 +10,13 @@ import pandas as pd
 import pytest
 
 from historical_asset_risk import cli
+from historical_asset_risk.artifacts import (
+    _AS_OF_BOOK_ARTIFACTS,
+    ARTIFACT_SCHEMAS,
+    load_artifact,
+)
 from historical_asset_risk.config import AnalysisConfig
+from historical_asset_risk.contracts import ArtifactSchemaError
 from historical_asset_risk.data_loader import price_content_hash
 from historical_asset_risk.stress import (
     STRESS_CATALOG_SCHEMA_ID,
@@ -306,6 +312,39 @@ def test_rerun_removes_stale_engine_artifacts_and_keeps_other_files(
     assert names - {"notes.txt"} == set(manifest["generated_artifacts"])
 
 
+def test_load_artifact_refuses_a_file_from_another_book(tmp_path: Path) -> None:
+    output_dir = tmp_path / "out"
+    cli.run_analysis(
+        _config(tmp_path, output_dir, portfolio=True, stress=True, history=True)
+    )
+    manifest_path = output_dir / "run_manifest.json"
+
+    # Every CSV of a genuine run loads, including the history files whose rows
+    # carry the earlier snapshots' identities rather than the as-of book's.
+    written = {path.name for path in output_dir.glob("*.csv")}
+    assert _AS_OF_BOOK_ARTIFACTS <= written
+    for name in written & set(ARTIFACT_SCHEMAS):
+        load_artifact(output_dir / name, manifest_path)
+    trailing = pd.read_csv(output_dir / "trailing_portfolio_tail_risk.csv")
+    assert trailing["exposure_snapshot_id"].nunique() > 1
+
+    valuation_path = output_dir / "portfolio_valuation.csv"
+    genuine = pd.read_csv(valuation_path)
+    # A blank identity must not pass as a match: comparing a nullable column
+    # and calling ``.all()`` would skip the missing value.
+    for tampered_id in ("exp_from_another_run", None):
+        valuation = genuine.assign(
+            exposure_snapshot_id=tampered_id, portfolio_value=999999
+        )
+        valuation.to_csv(valuation_path, index=False)
+        with pytest.raises(ArtifactSchemaError, match="exposure_snapshot_id"):
+            load_artifact(valuation_path, manifest_path)
+
+    genuine.assign(schema_version=None).to_csv(valuation_path, index=False)
+    with pytest.raises(ArtifactSchemaError, match="row schema versions"):
+        load_artifact(valuation_path, manifest_path)
+
+
 def test_returns_only_run_refuses_a_portfolio_output_directory(
     tmp_path: Path,
 ) -> None:
@@ -325,6 +364,28 @@ def test_manifest_price_hash_matches_the_written_prices(tmp_path: Path) -> None:
         output_dir / "adjusted_prices.csv", index_col="date", parse_dates=["date"]
     )
     assert manifest["data_source"]["price_content_hash"] == price_content_hash(written)
+
+
+def test_load_artifact_refuses_prices_that_no_longer_match_the_hash(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "out"
+    cli.run_analysis(_config(tmp_path, output_dir, portfolio=True))
+    prices_path = output_dir / "adjusted_prices.csv"
+    manifest_path = output_dir / "run_manifest.json"
+    load_artifact(prices_path, manifest_path)
+
+    edited = pd.read_csv(prices_path)
+    edited.loc[1, "SPY"] = 80.0
+    edited.to_csv(prices_path, index=False)
+    with pytest.raises(ArtifactSchemaError, match="price_content_hash"):
+        load_artifact(prices_path, manifest_path)
+
+    # A v0.1.1 manifest has no hash; its prices still load.
+    manifest = json.loads(manifest_path.read_text())
+    del manifest["data_source"]["price_content_hash"]
+    manifest_path.write_text(json.dumps(manifest))
+    assert load_artifact(prices_path, manifest_path).loc["2024-01-03", "SPY"] == 80.0
 
 
 def test_portfolio_run_rejects_a_session_missing_from_every_ticker(

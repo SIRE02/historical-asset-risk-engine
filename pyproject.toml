@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "historical-asset-risk-engine"
-version = "0.2.0"
+version = "0.2.1"
 description = "A historical asset-risk analysis engine for adjusted daily prices and portfolios."
 readme = "README.md"
 requires-python = ">=3.12"

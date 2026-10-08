@@ -250,6 +250,11 @@ def _aligned_exposure_vector(
     currency_exposures: Mapping[str, float],
     instrument_ids: Sequence[str],
 ) -> list[float]:
+    # A repeated column would apply one exposure to several return columns.
+    if len(set(instrument_ids)) != len(instrument_ids):
+        raise PortfolioReturnAlignmentError(
+            "The aligned return matrix has duplicate instrument columns."
+        )
     vector: list[float] = []
     missing: list[str] = []
     for instrument_id in instrument_ids:

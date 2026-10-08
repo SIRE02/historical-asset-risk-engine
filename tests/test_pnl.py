@@ -149,6 +149,17 @@ def test_hypothetical_pnl_missing_or_extra_exposure_fails() -> None:
         hypothetical_pnl({"US_SPY": 1.0, "US_QQQ": 1.0, "US_TLT": 1.0}, aligned)
 
 
+def test_hypothetical_pnl_rejects_duplicate_return_columns() -> None:
+    # One exposure applied to both "US_SPY" columns would double the P&L.
+    duplicated = pd.DataFrame(
+        [[0.01, 0.01]],
+        columns=["US_SPY", "US_SPY"],
+        index=pd.to_datetime(["2024-01-03"]),
+    )
+    with pytest.raises(PortfolioReturnAlignmentError, match="duplicate instrument"):
+        hypothetical_pnl({"US_SPY": 100.0}, duplicated)
+
+
 def test_cash_only_book_produces_zero_market_pnl() -> None:
     empty_matrix = pd.DataFrame(index=pd.to_datetime(["2024-01-03", "2024-01-04"]))
     result = hypothetical_pnl(

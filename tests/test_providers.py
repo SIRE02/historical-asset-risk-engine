@@ -218,6 +218,36 @@ def test_infinite_prices_are_invalid_not_valid_observations() -> None:
         normalize_and_validate(interior, config)
 
 
+def test_intraday_observations_are_rejected_not_treated_as_sessions() -> None:
+    config = AnalysisConfig(
+        tickers=("AAA", "BBB"),
+        start_date="2024-01-01",
+        end_date="2024-02-01",
+        rolling_window=2,
+    )
+    # Morning and afternoon prices on every session: distinct timestamps, so
+    # deduplication alone would keep both and halve the return interval.
+    morning = _canonical(_prices())
+    morning["date"] = morning["date"].dt.strftime("%Y-%m-%d 10:00")
+    afternoon = _canonical(_prices())
+    afternoon["date"] = afternoon["date"].dt.strftime("%Y-%m-%d 15:00")
+    intraday = pd.concat([morning, afternoon], ignore_index=True)
+    with pytest.raises(MarketDataError, match="carry a time of day"):
+        normalize_and_validate(intraday, config)
+
+    # A single observation per session still fails if it carries a time.
+    at_close = _canonical(_prices())
+    at_close["date"] = at_close["date"].dt.strftime("%Y-%m-%d 16:00")
+    with pytest.raises(MarketDataError, match="AAA 2024-01-02T16:00:00"):
+        normalize_and_validate(at_close, config)
+
+    # Midnight timestamps are session dates written with a time, and pass.
+    midnight = _canonical(_prices())
+    midnight["date"] = midnight["date"].dt.strftime("%Y-%m-%d 00:00:00")
+    prices, _normalized, _quality = normalize_and_validate(midnight, config)
+    assert len(prices) == 5
+
+
 def test_price_content_hash_tracks_every_price_and_nothing_else() -> None:
     prices = _prices()
     revised = prices.copy()

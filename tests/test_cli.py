@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from historical_asset_risk import __version__, cli
+from historical_asset_risk.artifacts import load_artifact
 from historical_asset_risk.config import AnalysisConfig
+from historical_asset_risk.contracts import ArtifactSchemaError
 from historical_asset_risk.data_loader import MarketDataError
 from historical_asset_risk.providers import ProviderPayload
 
@@ -204,6 +207,150 @@ def test_yahoo_analysis_persists_normalized_records_before_alignment(
     assert retained.isna().all()
     aligned_prices = pd.read_csv(output_dir / "adjusted_prices.csv", index_col="date")
     assert len(aligned_prices) == len(prices) - 1
+
+
+def _csv_config(prices: pd.DataFrame, tmp_path: Path, name: str) -> AnalysisConfig:
+    csv_path = tmp_path / f"{name}.csv"
+    _write_canonical_csv(prices, csv_path)
+    return AnalysisConfig(
+        provider="csv",
+        csv_path=csv_path,
+        output_dir=tmp_path / "outputs",
+        tickers=tuple(prices.columns),
+        start_date="2024-01-01",
+        end_date="2024-02-01",
+        rolling_window=3,
+    )
+
+
+def test_failed_rerun_leaves_the_previous_run_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prices: pd.DataFrame
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "plot_rolling_volatility",
+        lambda _data, path, _window: path.write_bytes(b"test chart"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "plot_correlation_heatmap",
+        lambda _data, path: path.write_bytes(b"test chart"),
+    )
+    first = _csv_config(prices, tmp_path, "first")
+    cli.run_analysis(first)
+    output_dir = first.output_dir
+    before = {path.name: path.read_bytes() for path in output_dir.iterdir()}
+
+    def failing_heatmap(_data: object, _path: Path) -> None:
+        raise RuntimeError("chart backend failed")
+
+    # The rerun writes its price and return CSVs before the chart fails.
+    monkeypatch.setattr(cli, "plot_correlation_heatmap", failing_heatmap)
+    with pytest.raises(RuntimeError, match="chart backend failed"):
+        cli.run_analysis(_csv_config(prices * 2, tmp_path, "second"))
+
+    after = {path.name: path.read_bytes() for path in output_dir.iterdir()}
+    assert after == before
+
+
+class _InMemoryYahooProvider:
+    """Supplies prices as provider floats, as Yahoo does, with no CSV parse."""
+
+    name = "yahoo"
+
+    def __init__(self, prices: pd.DataFrame) -> None:
+        self.records = (
+            prices.rename_axis("date")
+            .reset_index()
+            .melt(id_vars="date", var_name="ticker", value_name="adjusted_close")
+        )
+
+    def acquire(self, _config: AnalysisConfig) -> ProviderPayload:
+        return ProviderPayload(
+            self.records,
+            provider="yahoo",
+            source="in-memory provider floats",
+            acquired_at="2024-02-01T00:00:00+00:00",
+        )
+
+    def normalize(
+        self, payload: ProviderPayload, _requested_tickers: tuple[str, ...]
+    ) -> pd.DataFrame:
+        return payload.data.copy()
+
+
+def test_untouched_unrounded_prices_pass_the_price_hash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prices: pd.DataFrame
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "plot_rolling_volatility",
+        lambda _data, path, _window: path.write_bytes(b"test chart"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "plot_correlation_heatmap",
+        lambda _data, path: path.write_bytes(b"test chart"),
+    )
+    rng = np.random.default_rng(7)
+    unrounded = prices * np.exp(rng.normal(0.0, 0.01, prices.shape))
+    output_dir = tmp_path / "outputs"
+    config = AnalysisConfig(
+        provider="yahoo",
+        output_dir=output_dir,
+        tickers=tuple(prices.columns),
+        start_date="2024-01-01",
+        end_date="2024-02-01",
+        rolling_window=3,
+    )
+    cli.run_analysis(config, _InMemoryYahooProvider(unrounded))
+    prices_path = output_dir / "adjusted_prices.csv"
+
+    # The fixture must exercise the hazard: pandas' default parser lands one
+    # ulp away from some written provider floats, which would change the hash.
+    default = pd.read_csv(prices_path, index_col="date")
+    exact = pd.read_csv(prices_path, index_col="date", float_precision="round_trip")
+    assert (default != exact).any(axis=None)
+
+    loaded = load_artifact(prices_path, output_dir / "run_manifest.json")
+    assert loaded.to_numpy().tolist() == unrounded.to_numpy().tolist()
+
+
+def test_interrupted_publish_leaves_no_manifest_to_validate_against(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prices: pd.DataFrame
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "plot_rolling_volatility",
+        lambda _data, path, _window: path.write_bytes(b"test chart"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "plot_correlation_heatmap",
+        lambda _data, path: path.write_bytes(b"test chart"),
+    )
+    first = _csv_config(prices, tmp_path, "first")
+    cli.run_analysis(first)
+    output_dir = first.output_dir
+
+    real_replace = Path.replace
+
+    def failing_replace(source: Path, target: Path) -> Path:
+        if source.name == "log_returns.csv":
+            raise OSError("file is locked")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(Path, "replace", failing_replace)
+    with pytest.raises(OSError, match="file is locked"):
+        cli.run_analysis(_csv_config(prices * 2, tmp_path, "second"))
+
+    # New prices were published but the old manifest was not left beside them.
+    assert not (output_dir / "run_manifest.json").exists()
+    with pytest.raises(ArtifactSchemaError, match="Could not read artifact manifest"):
+        load_artifact(
+            output_dir / "adjusted_prices.csv", output_dir / "run_manifest.json"
+        )
+    assert not list(output_dir.glob(".staging-*"))
 
 
 def test_cli_arguments_override_configuration_file(

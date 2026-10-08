@@ -66,6 +66,7 @@ from historical_asset_risk.contracts import (
     PortfolioValuation,
     Position,
 )
+from historical_asset_risk.data_loader import price_content_hash
 
 ADJUSTED_PRICES_SCHEMA_ID = "historical-asset-risk/adjusted-prices"
 SIMPLE_RETURNS_SCHEMA_ID = "historical-asset-risk/simple-returns"
@@ -626,6 +627,43 @@ def artifact_schema_inventory(
     }
 
 
+# Artifacts describing only the manifest's as-of book. Every identity column
+# they carry must name that book, so a file from another run's book is refused.
+# The proxy-realized, realization, and trailing-risk files are absent: each of
+# their rows belongs to one snapshot in the exposure history.
+_AS_OF_BOOK_ARTIFACTS = frozenset(
+    {
+        "validated_positions.csv",
+        "portfolio_valuation.csv",
+        "portfolio_exposure_summary.csv",
+        "hypothetical_portfolio_pnl.csv",
+        "portfolio_risk_summary.csv",
+        "portfolio_risk_contributions.csv",
+        "portfolio_concentration_summary.csv",
+        "portfolio_value_at_risk.csv",
+        "portfolio_expected_shortfall.csv",
+        "portfolio_expected_shortfall_tail_weights.csv",
+        "tail_risk_comparison.csv",
+        "stress_test_results.csv",
+        "stress_contributions.csv",
+    }
+)
+_BOOK_IDENTITY_COLUMNS = (
+    "portfolio_snapshot_id",
+    "exposure_snapshot_id",
+    "portfolio_id",
+)
+
+
+def _every_row_equals(column: pd.Series, expected: object) -> bool:
+    """True when every row equals ``expected``; a blank row never matches.
+
+    A plain ``(series == expected).all()`` on a nullable column skips missing
+    values, so a blanked identity would pass.
+    """
+    return bool(column.astype("string").eq(expected).fillna(False).all())
+
+
 def _manifest_artifact_declaration(
     manifest_path: Path, artifact_name: str
 ) -> tuple[str, str, str, dict[str, Any]]:
@@ -681,8 +719,10 @@ def load_artifact(path: Path, manifest_path: Path) -> pd.DataFrame:
             f"expected {expected[0]!r} version {expected[1]!r} with units "
             f"{expected_units!r}."
         )
+    # The default parser can land one ulp off the written value, which would
+    # fail the price hash on an untouched file; round-trip parsing is exact.
     try:
-        frame = pd.read_csv(artifact_path)
+        frame = pd.read_csv(artifact_path, float_precision="round_trip")
     except (OSError, pd.errors.ParserError) as exc:
         raise ArtifactSchemaError(f"Could not load {artifact_path}: {exc}") from exc
     if frame.empty:
@@ -693,9 +733,8 @@ def load_artifact(path: Path, manifest_path: Path) -> pd.DataFrame:
         raise ArtifactSchemaError(
             f"{artifact_path.name} columns do not match its declared schema."
         )
-    if (
-        "schema_version" in frame.columns
-        and not (frame["schema_version"].astype("string") == schema_version).all()
+    if "schema_version" in frame.columns and not _every_row_equals(
+        frame["schema_version"], schema_version
     ):
         raise ArtifactSchemaError(
             f"{artifact_path.name} row schema versions do not match its manifest."
@@ -736,6 +775,16 @@ def load_artifact(path: Path, manifest_path: Path) -> pd.DataFrame:
         frame = numeric
         frame.index = parsed_dates
         frame.index.name = "date"
+        # ``v0.1.1`` manifests predate the hash, so its absence is not an error.
+        expected_hash = manifest.get("data_source", {}).get("price_content_hash")
+        if (
+            artifact_path.name == "adjusted_prices.csv"
+            and expected_hash is not None
+            and price_content_hash(frame) != expected_hash
+        ):
+            raise ArtifactSchemaError(
+                "adjusted_prices.csv does not match the manifest's price_content_hash."
+            )
 
     portfolio_manifest = manifest.get("portfolio")
     if isinstance(portfolio_manifest, dict):
@@ -755,6 +804,16 @@ def load_artifact(path: Path, manifest_path: Path) -> pd.DataFrame:
             raise ArtifactSchemaError(
                 "validated_positions.csv identities do not match the manifest."
             )
+        if artifact_path.name in _AS_OF_BOOK_ARTIFACTS:
+            for column in _BOOK_IDENTITY_COLUMNS:
+                if column not in frame.columns:
+                    continue
+                expected_id = portfolio_manifest.get(column)
+                if not _every_row_equals(frame[column], expected_id):
+                    raise ArtifactSchemaError(
+                        f"{artifact_path.name} {column} does not match the "
+                        f"manifest's {expected_id!r}."
+                    )
     return frame
 
 

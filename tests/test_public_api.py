@@ -141,5 +141,5 @@ def test_infrastructure_is_not_in_the_public_surface() -> None:
 def test_version_is_reported_consistently() -> None:
     from importlib.metadata import version
 
-    assert hare.__version__ == "0.2.0"
+    assert hare.__version__ == "0.2.1"
     assert version("historical-asset-risk-engine") == hare.__version__
